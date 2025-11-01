@@ -1,0 +1,5 @@
+{
+  "name": "Digital Piece-Rate Tracker",
+  "description": "A web application to manage and track factory piece-rate work, starting with the master data configuration.",
+  "requestFramePermissions": []
+}
