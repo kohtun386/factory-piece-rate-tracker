@@ -1,0 +1,35 @@
+steps:
+  # Build the Docker image using the Dockerfile
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'us-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/factory-piece-rate-tracker/digital-piece-rate-tracker:$COMMIT_SHA'
+      - '.'
+    id: 'Build'
+
+  # Push the Docker image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'us-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/factory-piece-rate-tracker/digital-piece-rate-tracker:$COMMIT_SHA'
+    id: 'Push'
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'services'
+      - 'update'
+      - 'digital-piece-rate-tracker'
+      - '--platform=managed'
+      - '--image=us-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/factory-piece-rate-tracker/digital-piece-rate-tracker:$COMMIT_SHA'
+      - '--labels=managed-by=gcp-cloud-build-deploy-cloud-run,commit-sha=$COMMIT_SHA,gcb-build-id=$BUILD_ID'
+      - '--region=us-west1'
+      - '--quiet'
+    id: 'Deploy'
+
+# Configure logging to fix service account requirement
+options:
+  logging: CLOUD_LOGGING_ONLY
