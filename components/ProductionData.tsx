@@ -1,25 +1,27 @@
 import React from 'react';
 import { ProductionEntry } from '../types';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface ProductionDataProps {
   entries: ProductionEntry[];
 }
 
 const ProductionData: React.FC<ProductionDataProps> = ({ entries }) => {
+  const { t } = useLanguage();
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
         <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
           <tr>
-            <th scope="col" className="px-6 py-3">Date</th>
-            <th scope="col" className="px-6 py-3">Shift</th>
-            <th scope="col" className="px-6 py-3">Worker Name</th>
-            <th scope="col" className="px-6 py-3">Job Position</th>
-            <th scope="col" className="px-6 py-3 text-right">Completed Qty</th>
-            <th scope="col" className="px-6 py-3 text-right">Defect Qty</th>
-            <th scope="col" className="px-6 py-3 text-right">Piece Rate (Ks)</th>
-            <th scope="col" className="px-6 py-3 text-right">Base Pay (Ks)</th>
-            <th scope="col" className="px-6 py-3 text-right">Deduction Amount (Ks)</th>
+            <th scope="col" className="px-6 py-3">{t('date')}</th>
+            <th scope="col" className="px-6 py-3">{t('shift')}</th>
+            <th scope="col" className="px-6 py-3">{t('workerName')}</th>
+            <th scope="col" className="px-6 py-3">{t('taskName')}</th>
+            <th scope="col" className="px-6 py-3 text-right">{t('completedQty')}</th>
+            <th scope="col" className="px-6 py-3 text-right">{t('defectQty')}</th>
+            <th scope="col" className="px-6 py-3 text-right">{t('pieceRateKs')}</th>
+            <th scope="col" className="px-6 py-3 text-right">{t('basePayKs')}</th>
+            <th scope="col" className="px-6 py-3 text-right">{t('deductionAmountKs')}</th>
           </tr>
         </thead>
         <tbody>
@@ -34,11 +36,11 @@ const ProductionData: React.FC<ProductionDataProps> = ({ entries }) => {
                     ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300' 
                     : 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300'
                 }`}>
-                    {entry.shift}
+                    {t(entry.shift.toLowerCase())}
                 </span>
               </td>
               <td className="px-6 py-4">{entry.workerName}</td>
-              <td className="px-6 py-4">{entry.jobPosition}</td>
+              <td className="px-6 py-4">{entry.taskName}</td>
               <td className="px-6 py-4 text-right font-medium text-gray-800 dark:text-gray-200">
                 {entry.completedQuantity.toLocaleString()}
               </td>

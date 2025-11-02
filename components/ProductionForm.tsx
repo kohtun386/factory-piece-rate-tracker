@@ -1,110 +1,101 @@
-import React, { useState, useMemo } from 'react';
-import { Worker, ProductionEntry } from '../types';
+import React, { useState } from 'react';
+import { ProductionEntry, Worker, RateCardEntry, Shift } from '../types';
+import { useLanguage } from '../contexts/LanguageContext';
+import AddTaskModal from './AddTaskModal';
 
 interface ProductionFormProps {
   workers: Worker[];
-  onSubmit: (entry: Omit<ProductionEntry, 'id' | 'pieceRate' | 'basePay' | 'deductionAmount'> & { id?: string }) => void;
+  rateCard: RateCardEntry[];
+  onAddEntry: (entry: ProductionEntry) => void;
+  onAddTask: (task: RateCardEntry) => void;
 }
 
-const ProductionForm: React.FC<ProductionFormProps> = ({ workers, onSubmit }) => {
+const ProductionForm: React.FC<ProductionFormProps> = ({ workers, rateCard, onAddEntry, onAddTask }) => {
+  const { t } = useLanguage();
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [shift, setShift] = useState<'Day' | 'Night'>('Day');
-  const [workerName, setWorkerName] = useState(workers[0]?.workerName || '');
-  const [jobPosition, setJobPosition] = useState(workers[0]?.jobPosition || '');
+  const [shift, setShift] = useState<Shift>('Day');
+  const [workerName, setWorkerName] = useState('');
+  const [taskName, setTaskName] = useState('');
   const [completedQuantity, setCompletedQuantity] = useState('');
   const [defectQuantity, setDefectQuantity] = useState('');
-
-  const uniqueJobPositions = useMemo(() => {
-    const jobs = new Set(workers.map(w => w.jobPosition));
-    return Array.from(jobs).sort();
-  }, [workers]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!date || !workerName || !jobPosition || completedQuantity === '' || defectQuantity === '') {
-      alert('Please fill out all fields.');
-      return;
-    }
+    const selectedTask = rateCard.find(t => t.taskName === taskName);
+    if (!selectedTask || !workerName) return;
 
-    const completed = parseInt(completedQuantity, 10);
-    const defects = parseInt(defectQuantity, 10);
+    const completedQty = parseInt(completedQuantity) || 0;
+    const defectQty = parseInt(defectQuantity) || 0;
+    const pieceRate = selectedTask.rate;
+    const basePay = completedQty * pieceRate;
+    const deductionAmount = defectQty * pieceRate;
 
-    if (isNaN(completed) || isNaN(defects) || completed < 0 || defects < 0) {
-        alert('Please enter valid, non-negative numbers for quantities.');
-        return;
-    }
-
-    onSubmit({
-      id: Date.now().toString(),
+    onAddEntry({
+      id: `E${Date.now()}`,
       date,
       shift,
       workerName,
-      jobPosition,
-      completedQuantity: completed,
-      defectQuantity: defects,
+      taskName,
+      completedQuantity: completedQty,
+      defectQuantity: defectQty,
+      pieceRate,
+      basePay,
+      deductionAmount,
     });
-
-    // Reset form fields, but keep date and shift
-    setWorkerName(workers[0]?.workerName || '');
-    setJobPosition(workers[0]?.jobPosition || '');
+    
+    // Reset form
+    setTaskName('');
     setCompletedQuantity('');
     setDefectQuantity('');
   };
 
-  const commonInputClasses = "bg-gray-50 border border-gray-300 text-gray-900 text-base rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-3 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white";
-  const commonLabelClasses = "block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300";
-
   return (
-    <div className="bg-white dark:bg-gray-800 shadow-2xl rounded-xl p-6 md:p-8">
-      <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-1">Daily Production Entry</h2>
-      <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Enter the production details for a worker's shift.</p>
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        
-        {/* Input Fields */}
-        <div>
-          <label htmlFor="date" className={commonLabelClasses}>Date</label>
-          <input type="date" id="date" value={date} onChange={e => setDate(e.target.value)} className={commonInputClasses} required />
-        </div>
+    <div className="bg-white dark:bg-gray-800 shadow-2xl rounded-xl p-6 md:p-8 mb-8">
+        <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-4">{t('logNewEntry')}</h2>
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="col-span-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('date')}</label>
+                <input type="date" value={date} onChange={e => setDate(e.target.value)} required className="mt-1 w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+            </div>
+            <div className="col-span-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('shift')}</label>
+                <select value={shift} onChange={e => setShift(e.target.value as Shift)} required className="mt-1 w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <option value="Day">{t('day')}</option>
+                    <option value="Night">{t('night')}</option>
+                </select>
+            </div>
+            <div className="col-span-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('workerName')}</label>
+                <select value={workerName} onChange={e => setWorkerName(e.target.value)} required className="mt-1 w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <option value="">{t('selectWorker')}</option>
+                    {workers.map(w => <option key={w.id} value={w.name}>{w.name}</option>)}
+                </select>
+            </div>
+            <div className="col-span-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('taskName')}</label>
+                <select value={taskName} onChange={e => setTaskName(e.target.value)} required className="mt-1 w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <option value="">{t('selectTask')}</option>
+                    {rateCard.map(t => <option key={t.id} value={t.taskName}>{t.taskName}</option>)}
+                </select>
+            </div>
+            <div className="col-span-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('completedQty')}</label>
+                <input type="number" value={completedQuantity} onChange={e => setCompletedQuantity(e.target.value)} required className="mt-1 w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+            </div>
+            <div className="col-span-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('defectQty')}</label>
+                <input type="number" value={defectQuantity} onChange={e => setDefectQuantity(e.target.value)} required className="mt-1 w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+            </div>
 
-        <div>
-          <label htmlFor="shift" className={commonLabelClasses}>Shift</label>
-          <select id="shift" value={shift} onChange={e => setShift(e.target.value as 'Day' | 'Night')} className={commonInputClasses}>
-            <option>Day</option>
-            <option>Night</option>
-          </select>
-        </div>
-        
-        <div>
-          <label htmlFor="workerName" className={commonLabelClasses}>Worker Name</label>
-          <select id="workerName" value={workerName} onChange={e => setWorkerName(e.target.value)} className={commonInputClasses} required>
-            {workers.map(worker => <option key={worker.workerId} value={worker.workerName}>{worker.workerName}</option>)}
-          </select>
-        </div>
-
-        <div>
-          <label htmlFor="jobPosition" className={commonLabelClasses}>Job Position</label>
-          <select id="jobPosition" value={jobPosition} onChange={e => setJobPosition(e.target.value)} className={commonInputClasses} required>
-            {uniqueJobPositions.map(job => <option key={job} value={job}>{job}</option>)}
-          </select>
-        </div>
-
-        <div>
-          <label htmlFor="completedQuantity" className={commonLabelClasses}>Completed Quantity</label>
-          <input type="number" id="completedQuantity" value={completedQuantity} onChange={e => setCompletedQuantity(e.target.value)} min="0" placeholder="e.g., 500" className={commonInputClasses} required />
-        </div>
-
-        <div>
-          <label htmlFor="defectQuantity" className={commonLabelClasses}>Defect Quantity</label>
-          <input type="number" id="defectQuantity" value={defectQuantity} onChange={e => setDefectQuantity(e.target.value)} min="0" placeholder="e.g., 5" className={commonInputClasses} required />
-        </div>
-        
-        <div className="md:col-span-2 lg:col-span-3 flex justify-end">
-          <button type="submit" className="text-white bg-gradient-to-r from-blue-500 to-teal-400 hover:bg-gradient-to-bl focus:ring-4 focus:outline-none focus:ring-blue-300 dark:focus:ring-blue-800 font-medium rounded-lg text-base px-10 py-4 text-center transition-all duration-300 ease-in-out">
-            Submit Entry
-          </button>
-        </div>
-
-      </form>
+            <div className="md:col-span-2 lg:col-span-3 flex items-center justify-end gap-4">
+                <button type="button" onClick={() => setIsModalOpen(true)} className="text-sm text-blue-600 hover:underline dark:text-blue-400">
+                    {t('addNewTask')}
+                </button>
+                <button type="submit" className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-semibold">{t('submit')}</button>
+            </div>
+        </form>
+        <AddTaskModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={(task) => { onAddTask(task); setTaskName(task.taskName); }} />
     </div>
   );
 };

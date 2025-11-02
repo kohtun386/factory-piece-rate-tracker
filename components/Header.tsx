@@ -1,15 +1,19 @@
-
 import React from 'react';
+import LanguageSwitcher from './LanguageSwitcher';
+import AuthSwitcher from './AuthSwitcher';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const Header: React.FC = () => {
+  const { t } = useLanguage();
   return (
-    <header className="text-center">
-      <h1 className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-teal-400">
-        Digital Piece-Rate Tracker
-      </h1>
-      <p className="mt-2 text-lg text-gray-600 dark:text-gray-300">
-        Factory Management System - Version 1.0
-      </p>
+    <header className="bg-white dark:bg-gray-800 shadow-md p-4 mb-8">
+      <div className="container mx-auto flex justify-between items-center">
+        <h1 className="text-xl font-bold text-gray-800 dark:text-white">{t('appTitle')}</h1>
+        <div className="flex items-center space-x-4">
+            <AuthSwitcher />
+            <LanguageSwitcher />
+        </div>
+      </div>
     </header>
   );
 };
