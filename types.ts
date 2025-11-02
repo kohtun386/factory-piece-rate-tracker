@@ -1,5 +1,6 @@
 export type Shift = 'Day' | 'Night';
 export type UserRole = 'owner' | 'supervisor';
+export type SubscriptionStatus = 'TRIAL' | 'PAID' | 'EXPIRED' | 'INVALID';
 
 export interface ProductionEntry {
   id: string;
@@ -31,4 +32,28 @@ export interface JobPosition {
   englishName: string;
   myanmarName: string;
   notes: string;
+}
+
+export type AuditAction = 'CREATE' | 'UPDATE' | 'DELETE';
+export type AuditTarget = 'PRODUCTION_ENTRY' | 'WORKER' | 'RATE_CARD' | 'JOB_POSITION';
+
+export interface AuditEntry {
+  timestamp: string; // ISO 8601 format
+  user: UserRole;
+  action: AuditAction;
+  target: AuditTarget;
+  details: string;
+}
+
+// From Firebase, but defined here for type safety
+export interface FirebaseTimestamp {
+  seconds: number;
+  nanoseconds: number;
+  toDate: () => Date;
+}
+
+export interface ClientData {
+  clientName: string;
+  subscriptionStatus: 'TRIAL' | 'PAID';
+  trialEndDate?: FirebaseTimestamp;
 }

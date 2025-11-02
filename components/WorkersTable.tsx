@@ -1,16 +1,18 @@
+
 import React, { useState } from 'react';
-import { Worker } from '../types';
+import { Worker, JobPosition } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 
 interface WorkersTableProps {
   data: Worker[];
+  jobPositions: JobPosition[];
   onAdd: (worker: Worker) => void;
   onUpdate: (worker: Worker) => void;
   onDelete: (workerId: string) => void;
 }
 
-const WorkersTable: React.FC<WorkersTableProps> = ({ data, onAdd, onUpdate, onDelete }) => {
+const WorkersTable: React.FC<WorkersTableProps> = ({ data, jobPositions, onAdd, onUpdate, onDelete }) => {
   const { t } = useLanguage();
   const { role } = useAuth();
   
@@ -74,7 +76,10 @@ const WorkersTable: React.FC<WorkersTableProps> = ({ data, onAdd, onUpdate, onDe
               </td>
               <td className="px-6 py-4">
                 {editingId === worker.id ? (
-                  <input type="text" value={editedData.position || ''} onChange={(e) => setEditedData({...editedData, position: e.target.value})} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                  <select value={editedData.position || ''} onChange={(e) => setEditedData({...editedData, position: e.target.value})} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <option value="">Select Position</option>
+                    {jobPositions.map(p => <option key={p.englishName} value={p.englishName}>{p.englishName}</option>)}
+                  </select>
                 ) : (
                   worker.position
                 )}
@@ -111,7 +116,10 @@ const WorkersTable: React.FC<WorkersTableProps> = ({ data, onAdd, onUpdate, onDe
             </div>
             <div>
                 <label className="block text-sm font-medium">{t('position')}</label>
-                <input type="text" value={newPosition} onChange={e => setNewPosition(e.target.value)} required className="mt-1 w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" />
+                <select value={newPosition} onChange={e => setNewPosition(e.target.value)} required className="mt-1 w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <option value="">Select Position</option>
+                    {jobPositions.map(p => <option key={p.englishName} value={p.englishName}>{p.englishName}</option>)}
+                </select>
             </div>
             <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-semibold h-fit">{t('submit')}</button>
         </form>

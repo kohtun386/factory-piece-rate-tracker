@@ -15,6 +15,27 @@
   }
 }
 </script>
+<style>
+  @media print {
+    .noprint {
+      display: none !important;
+    }
+    body {
+      background-color: white;
+    }
+    main {
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+    .printable-area {
+      display: block !important;
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+    }
+  }
+</style>
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
   <div id="root"></div>

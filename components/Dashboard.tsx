@@ -1,6 +1,9 @@
+
+
 import React, { useState, useMemo } from 'react';
 import { ProductionEntry } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
+import PrintableReport from './PrintableReport';
 
 interface DashboardProps {
   entries: ProductionEntry[];
@@ -28,9 +31,10 @@ const Dashboard: React.FC<DashboardProps> = ({ entries }) => {
     });
   }, [entries, startDate, endDate]);
 
-  const payrollData = useMemo(() => {
-    // Fix: Explicitly type the accumulator in the reduce callback to fix type inference issues, ensuring `totalPay` is a number for the sort operation.
-    const payroll = filteredEntries.reduce((acc: Record<string, number>, entry) => {
+  const payrollData = useMemo<{ workerName: string; totalPay: number }[]>(() => {
+    // Fix: Explicitly type the accumulator to ensure `totalPay` is inferred as a number.
+    // FIX: Add a generic type to `reduce` to correctly type the accumulator. The initial value `{}` was causing `acc` to be inferred as `{}`, leading to type errors.
+    const payroll = filteredEntries.reduce<Record<string, number>>((acc, entry) => {
       acc[entry.workerName] = (acc[entry.workerName] || 0) + entry.basePay;
       return acc;
     }, {});
@@ -39,8 +43,8 @@ const Dashboard: React.FC<DashboardProps> = ({ entries }) => {
       .sort((a, b) => b.totalPay - a.totalPay);
   }, [filteredEntries]);
 
-  const productivityData = useMemo(() => {
-    // Fix: Explicitly type the accumulator in the reduce callback to fix type inference issues, ensuring `qty` is a number for calculations.
+  const productivityData = useMemo<{ Day: number; Night: number }>(() => {
+    // Fix: Explicitly type the accumulator to ensure correct type inference for productivity data.
     return filteredEntries.reduce((acc: { Day: number, Night: number }, entry) => {
         acc[entry.shift] = (acc[entry.shift] || 0) + entry.completedQuantity;
         return acc;
@@ -49,9 +53,10 @@ const Dashboard: React.FC<DashboardProps> = ({ entries }) => {
   
   const maxProductivity = Math.max(productivityData.Day, productivityData.Night) || 1;
 
-  const qualityData = useMemo(() => {
-    // Fix: Explicitly type the accumulator in the reduce callback to fix type inference issues, ensuring `totalDefects` is a number for the sort operation.
-    const defectsByPosition = filteredEntries.reduce((acc: Record<string, number>, entry) => {
+  const qualityData = useMemo<{ taskName: string; totalDefects: number }[]>(() => {
+    // Fix: Explicitly type the accumulator to ensure `totalDefects` is inferred as a number.
+    // FIX: Add a generic type to `reduce` to correctly type the accumulator. The initial value `{}` was causing `acc` to be inferred as `{}`, leading to type errors.
+    const defectsByPosition = filteredEntries.reduce<Record<string, number>>((acc, entry) => {
         if(entry.defectQuantity > 0) {
             acc[entry.taskName] = (acc[entry.taskName] || 0) + entry.defectQuantity;
         }
@@ -85,7 +90,7 @@ const Dashboard: React.FC<DashboardProps> = ({ entries }) => {
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">{t('dashboardSubtitle')}</p>
 
       {/* Date Filter */}
-      <div className="flex flex-wrap gap-4 mb-8 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+      <div className="flex flex-wrap gap-4 mb-8 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg noprint">
           <div className="flex-1 min-w-[200px]">
             <label htmlFor="startDate" className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300">{t('startDate')}</label>
             <input type="date" id="startDate" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" />
@@ -99,7 +104,10 @@ const Dashboard: React.FC<DashboardProps> = ({ entries }) => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Payroll Report */}
         <div className="lg:col-span-1 bg-gray-50 dark:bg-gray-900/50 p-6 rounded-lg">
-           <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">{t('payrollReport')}</h3>
+           <div className="flex justify-between items-center mb-4">
+             <h3 className="text-lg font-semibold text-gray-800 dark:text-white">{t('payrollReport')}</h3>
+             <button onClick={() => window.print()} className="px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-semibold text-xs noprint">{t('printReport')}</button>
+           </div>
            <div className="max-h-96 overflow-y-auto">
              <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
                 <thead className="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-gray-700 dark:text-gray-400 sticky top-0">
@@ -166,6 +174,9 @@ const Dashboard: React.FC<DashboardProps> = ({ entries }) => {
                 )}
             </div>
         </div>
+      </div>
+      <div className="hidden printable-area">
+         <PrintableReport data={payrollData} startDate={startDate} endDate={endDate} />
       </div>
     </div>
   );
