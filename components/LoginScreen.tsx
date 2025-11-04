@@ -19,8 +19,9 @@ const LoginScreen: React.FC = () => {
     const loadedConfig = loadFirebaseConfig();
     if (loadedConfig) {
       setConfig(loadedConfig);
-      initializeFirebase(loadedConfig);
-      setIsUsingCustomConfig(true);
+      if (initializeFirebase(loadedConfig)) {
+        setIsUsingCustomConfig(true);
+      }
     }
   }, []);
 
@@ -29,9 +30,13 @@ const LoginScreen: React.FC = () => {
     setError('');
     if (!clientId) return;
 
-    const success = await login(clientId);
-    if (!success) {
-      setError(t('invalidClientId'));
+    const result = await login(clientId);
+    if (!result.success) {
+      if (result.error === 'permission_denied') {
+        setError(t('permissionDeniedError'));
+      } else {
+        setError(t('invalidClientId'));
+      }
     }
   };
 
@@ -74,45 +79,69 @@ const LoginScreen: React.FC = () => {
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{t('appTitle')}</h1>
             <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">{t('loginTitle')}</p>
         </div>
-        <form className="space-y-6" onSubmit={handleLogin}>
-          <div>
-            <label htmlFor="clientId" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              {t('clientIdLabel')}
-            </label>
-            <div className="mt-1">
-              <input
-                id="clientId"
-                name="clientId"
-                type="text"
-                autoComplete="off"
-                required
-                value={clientId}
-                onChange={(e) => setClientId(e.target.value)}
-                className="w-full px-3 py-2 text-gray-900 placeholder-gray-500 border border-gray-300 rounded-md appearance-none focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              />
-            </div>
-          </div>
 
-          {error && <p className="text-sm text-center text-red-500">{error}</p>}
+        {/* --- Login Form (Visible when not configuring) --- */}
+        {!showConfig && (
+          <>
+            <form className="space-y-6" onSubmit={handleLogin}>
+              <div>
+                <label htmlFor="clientId" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {t('clientIdLabel')}
+                </label>
+                <div className="mt-1">
+                  <input
+                    id="clientId"
+                    name="clientId"
+                    type="text"
+                    autoComplete="off"
+                    required
+                    value={clientId}
+                    onChange={(e) => setClientId(e.target.value)}
+                    className="w-full px-3 py-2 text-gray-900 placeholder-gray-500 border border-gray-300 rounded-md appearance-none focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  />
+                </div>
+              </div>
 
-          <div>
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="relative flex justify-center w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md group hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-400 dark:disabled:bg-blue-800"
-            >
-              {isLoading ? t('loggingIn') : t('login')}
-            </button>
-          </div>
-        </form>
+              {error && <p className="text-sm text-center text-red-500">{error}</p>}
 
+              <div>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="relative flex justify-center w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md group hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-400 dark:disabled:bg-blue-800"
+                >
+                  {isLoading ? t('loggingIn') : t('login')}
+                </button>
+              </div>
+            </form>
+            
+            {!isUsingCustomConfig && (
+                <div className="text-center text-xs text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700 pt-4">
+                <p className="font-semibold mb-2">{t('demoIdsHint')}</p>
+                <div className="flex justify-center gap-2 flex-wrap">
+                    {mockIds.map(id => (
+                    <button 
+                        key={id}
+                        onClick={() => setClientId(id)}
+                        className="px-2 py-1 bg-gray-200 dark:bg-gray-600 rounded hover:bg-gray-300 dark:hover:bg-gray-500"
+                    >
+                        <code>{id}</code>
+                    </button>
+                    ))}
+                </div>
+                </div>
+            )}
+          </>
+        )}
+
+        {/* --- Configuration UI --- */}
         <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
             <div className="text-center">
-                {isUsingCustomConfig ? (
+                {isUsingCustomConfig && !showConfig && (
                     <p className="text-xs text-green-600 dark:text-green-400 mb-2">Connected to your Firebase project.</p>
-                ) : null}
+                )}
                 <button onClick={() => setShowConfig(!showConfig)} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
-                    {showConfig ? t('hideConfig') : isUsingCustomConfig ? t('editConfig') : t('connectToFirebase')}
+                    {showConfig ? t('cancel') : isUsingCustomConfig ? t('editConfig') : t('connectToFirebase')}
                 </button>
             </div>
             {showConfig && (
@@ -139,23 +168,6 @@ const LoginScreen: React.FC = () => {
                 </div>
             )}
         </div>
-        
-        {!isUsingCustomConfig && (
-            <div className="text-center text-xs text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700 pt-4">
-            <p className="font-semibold mb-2">{t('demoIdsHint')}</p>
-            <div className="flex justify-center gap-2 flex-wrap">
-                {mockIds.map(id => (
-                <button 
-                    key={id}
-                    onClick={() => setClientId(id)}
-                    className="px-2 py-1 bg-gray-200 dark:bg-gray-600 rounded hover:bg-gray-300 dark:hover:bg-gray-500"
-                >
-                    <code>{id}</code>
-                </button>
-                ))}
-            </div>
-            </div>
-        )}
       </div>
     </div>
   );

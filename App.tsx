@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Header from './components/Header';
@@ -12,29 +12,74 @@ import AuditLogView from './components/AuditLogView';
 import LoginScreen from './components/LoginScreen';
 import SubscriptionGate from './components/SubscriptionGate';
 import { ProductionEntry, RateCardEntry, Worker, JobPosition, AuditEntry, AuditAction, AuditTarget } from './types';
-import { WORKERS as initialWorkers } from './data/workers';
-import { RATE_CARD as initialRateCard } from './data/rateCard';
-import { JOB_POSITIONS as initialJobPositions } from './data/jobPositions';
-
-const initialEntries: ProductionEntry[] = [
-  { id: '1', date: '2023-10-01', shift: 'Day', workerName: 'Aung Aung', taskName: 'Weaving - Pattern A', completedQuantity: 100, defectQuantity: 5, pieceRate: 150, basePay: 15000, deductionAmount: 750 },
-  { id: '2', date: '2023-10-01', shift: 'Night', workerName: 'Maung Maung', taskName: 'Weaving - Pattern B', completedQuantity: 80, defectQuantity: 2, pieceRate: 180, basePay: 14400, deductionAmount: 360 },
-  { id: '3', date: '2023-10-02', shift: 'Day', workerName: 'Hla Hla', taskName: 'Spinning - Cotton', completedQuantity: 50, defectQuantity: 1, pieceRate: 500, basePay: 25000, deductionAmount: 500 },
-];
+import { getCollection, addDocument, updateDocument, deleteDocument } from './lib/firebase';
 
 type View = 'dashboard' | 'data' | 'master' | 'audit';
+
+// Helper to add an 'id' to a JobPosition for Firestore compatibility
+const jobPositionToDoc = (position: JobPosition) => ({ ...position, id: position.englishName });
 
 const AppContent: React.FC = () => {
     const { isAuthenticated, role } = useAuth();
     const { t } = useLanguage();
-    const [entries, setEntries] = useState<ProductionEntry[]>(initialEntries);
-    const [workers, setWorkers] = useState<Worker[]>(initialWorkers);
-    const [rateCard, setRateCard] = useState<RateCardEntry[]>(initialRateCard);
-    const [jobPositions, setJobPositions] = useState<JobPosition[]>(initialJobPositions);
+    const [isLoadingData, setIsLoadingData] = useState(true);
+    const [entries, setEntries] = useState<ProductionEntry[]>([]);
+    const [workers, setWorkers] = useState<Worker[]>([]);
+    const [rateCard, setRateCard] = useState<RateCardEntry[]>([]);
+    const [jobPositions, setJobPositions] = useState<JobPosition[]>([]);
     const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
     const [view, setView] = useState<View>(role === 'owner' ? 'dashboard' : 'data');
 
-    React.useEffect(() => {
+    const logAuditEvent = useCallback(async (action: AuditAction, target: AuditTarget, details: string) => {
+        const newLogEntry: AuditEntry = {
+            id: `A${Date.now()}`,
+            timestamp: new Date().toISOString(),
+            user: role,
+            action,
+            target,
+            details,
+        };
+        try {
+            await addDocument<AuditEntry>('auditLog', newLogEntry);
+            setAuditLog(prevLog => [newLogEntry, ...prevLog]);
+        } catch (error) {
+            console.error("Failed to log audit event:", error);
+        }
+    }, [role]);
+
+    useEffect(() => {
+        if (isAuthenticated) {
+            const fetchData = async () => {
+                setIsLoadingData(true);
+                console.log("Fetching all collections from Firestore...");
+                try {
+                    const [workersData, rateCardData, jobPositionsData, entriesData, auditLogData] = await Promise.all([
+                        getCollection<Worker>('workers'),
+                        getCollection<RateCardEntry>('rateCard'),
+                        getCollection<JobPosition>('jobPositions'),
+                        getCollection<ProductionEntry>('productionEntries'),
+                        getCollection<AuditEntry>('auditLog'),
+                    ]);
+
+                    setWorkers(workersData);
+                    setRateCard(rateCardData);
+                    setJobPositions(jobPositionsData);
+                    setEntries(entriesData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+                    setAuditLog(auditLogData.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+
+                    console.log("All data fetched successfully.");
+                } catch (error) {
+                    console.error("Error fetching initial data from Firestore:", error);
+                } finally {
+                    setIsLoadingData(false);
+                }
+            };
+            fetchData();
+        }
+    }, [isAuthenticated]);
+
+
+    useEffect(() => {
       setView(role === 'owner' ? 'dashboard' : 'data');
     }, [role]);
 
@@ -42,67 +87,106 @@ const AppContent: React.FC = () => {
         return <LoginScreen />;
     }
 
-    const logAuditEvent = (action: AuditAction, target: AuditTarget, details: string) => {
-        const newLogEntry: AuditEntry = {
-            timestamp: new Date().toISOString(),
-            user: role,
-            action,
-            target,
-            details,
-        };
-        setAuditLog(prevLog => [newLogEntry, ...prevLog]);
+    const addProductionEntry = async (entry: ProductionEntry) => {
+        try {
+            const newEntry = await addDocument<ProductionEntry>('productionEntries', entry);
+            setEntries(prev => [newEntry, ...prev]);
+            logAuditEvent('CREATE', 'PRODUCTION_ENTRY', `Logged entry for ${entry.workerName} on task '${entry.taskName}'`);
+        } catch (error) {
+            console.error("Failed to add production entry:", error);
+        }
     };
 
-    const addProductionEntry = (entry: ProductionEntry) => {
-        setEntries(prev => [entry, ...prev]);
-        logAuditEvent('CREATE', 'PRODUCTION_ENTRY', `Logged entry for ${entry.workerName} on task '${entry.taskName}'`);
+    const handleAddWorker = async (worker: Worker) => {
+        try {
+            const newWorker = await addDocument<Worker>('workers', worker);
+            setWorkers(prev => [...prev, newWorker]);
+            logAuditEvent('CREATE', 'WORKER', `Added worker ${worker.id}: ${worker.name}`);
+        } catch (error) {
+            console.error("Failed to add worker:", error);
+        }
     };
 
-    const handleAddWorker = (worker: Worker) => {
-        setWorkers(prev => [...prev, worker]);
-        logAuditEvent('CREATE', 'WORKER', `Added worker ${worker.id}: ${worker.name}`);
+    const handleUpdateWorker = async (updatedWorker: Worker) => {
+        try {
+            await updateDocument<Worker>('workers', updatedWorker);
+            setWorkers(prev => prev.map(w => w.id === updatedWorker.id ? updatedWorker : w));
+            logAuditEvent('UPDATE', 'WORKER', `Updated worker ${updatedWorker.id}: ${updatedWorker.name}`);
+        } catch (error) {
+            console.error("Failed to update worker:", error);
+        }
     };
 
-    const handleUpdateWorker = (updatedWorker: Worker) => {
-        setWorkers(prev => prev.map(w => w.id === updatedWorker.id ? updatedWorker : w));
-        logAuditEvent('UPDATE', 'WORKER', `Updated worker ${updatedWorker.id}: ${updatedWorker.name}`);
+    const handleDeleteWorker = async (workerId: string) => {
+        try {
+            const workerName = workers.find(w => w.id === workerId)?.name || 'N/A';
+            await deleteDocument('workers', workerId);
+            setWorkers(prev => prev.filter(w => w.id !== workerId));
+            logAuditEvent('DELETE', 'WORKER', `Deleted worker ${workerId}: ${workerName}`);
+        } catch (error) {
+            console.error("Failed to delete worker:", error);
+        }
     };
 
-    const handleDeleteWorker = (workerId: string) => {
-        const workerName = workers.find(w => w.id === workerId)?.name || 'N/A';
-        setWorkers(prev => prev.filter(w => w.id !== workerId));
-        logAuditEvent('DELETE', 'WORKER', `Deleted worker ${workerId}: ${workerName}`);
+    const handleAddRateCardEntry = async (task: RateCardEntry) => {
+        try {
+            const newTask = await addDocument<RateCardEntry>('rateCard', task);
+            setRateCard(prev => [...prev, newTask]);
+            logAuditEvent('CREATE', 'RATE_CARD', `Added task '${task.taskName}' with rate ${task.rate}`);
+        } catch (error) {
+            console.error("Failed to add rate card entry:", error);
+        }
     };
 
-    const handleAddRateCardEntry = (task: RateCardEntry) => {
-        setRateCard(prev => [...prev, task]);
-        logAuditEvent('CREATE', 'RATE_CARD', `Added task '${task.taskName}' with rate ${task.rate}`);
+    const handleUpdateRateCardEntry = async (updatedTask: RateCardEntry) => {
+        try {
+            await updateDocument<RateCardEntry>('rateCard', updatedTask);
+            setRateCard(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
+            logAuditEvent('UPDATE', 'RATE_CARD', `Updated task '${updatedTask.taskName}'`);
+        } catch (error) {
+            console.error("Failed to update rate card entry:", error);
+        }
     };
 
-    const handleUpdateRateCardEntry = (updatedTask: RateCardEntry) => {
-        setRateCard(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
-        logAuditEvent('UPDATE', 'RATE_CARD', `Updated task '${updatedTask.taskName}'`);
+    const handleDeleteRateCardEntry = async (taskId: string) => {
+        try {
+            const taskName = rateCard.find(t => t.id === taskId)?.taskName || 'N/A';
+            await deleteDocument('rateCard', taskId);
+            setRateCard(prev => prev.filter(t => t.id !== taskId));
+            logAuditEvent('DELETE', 'RATE_CARD', `Deleted task ${taskId}: ${taskName}`);
+        } catch (error) {
+            console.error("Failed to delete rate card entry:", error);
+        }
     };
 
-    const handleDeleteRateCardEntry = (taskId: string) => {
-        const taskName = rateCard.find(t => t.id === taskId)?.taskName || 'N/A';
-        setRateCard(prev => prev.filter(t => t.id !== taskId));
-        logAuditEvent('DELETE', 'RATE_CARD', `Deleted task ${taskId}: ${taskName}`);
+    const handleAddJobPosition = async (position: JobPosition) => {
+        try {
+            await addDocument('jobPositions', jobPositionToDoc(position));
+            setJobPositions(prev => [...prev, position]);
+            logAuditEvent('CREATE', 'JOB_POSITION', `Added job position '${position.englishName}'`);
+        } catch (error) {
+            console.error("Failed to add job position:", error);
+        }
     };
 
-    const handleAddJobPosition = (position: JobPosition) => {
-        setJobPositions(prev => [...prev, position]);
-        logAuditEvent('CREATE', 'JOB_POSITION', `Added job position '${position.englishName}'`);
+    const handleUpdateJobPosition = async (updatedPosition: JobPosition) => {
+        try {
+            await updateDocument('jobPositions', jobPositionToDoc(updatedPosition));
+            setJobPositions(prev => prev.map(p => p.englishName === updatedPosition.englishName ? updatedPosition : p));
+            logAuditEvent('UPDATE', 'JOB_POSITION', `Updated job position '${updatedPosition.englishName}'`);
+        } catch (error) {
+            console.error("Failed to update job position:", error);
+        }
     };
 
-    const handleUpdateJobPosition = (updatedPosition: JobPosition) => {
-        setJobPositions(prev => prev.map(p => p.englishName === updatedPosition.englishName ? updatedPosition : p));
-        logAuditEvent('UPDATE', 'JOB_POSITION', `Updated job position '${updatedPosition.englishName}'`);
-    };
-
-    const handleDeleteJobPosition = (englishName: string) => {
-        setJobPositions(prev => prev.filter(p => p.englishName !== englishName));
-        logAuditEvent('DELETE', 'JOB_POSITION', `Deleted job position '${englishName}'`);
+    const handleDeleteJobPosition = async (englishName: string) => {
+        try {
+            await deleteDocument('jobPositions', englishName);
+            setJobPositions(prev => prev.filter(p => p.englishName !== englishName));
+            logAuditEvent('DELETE', 'JOB_POSITION', `Deleted job position '${englishName}'`);
+        } catch (error) {
+            console.error("Failed to delete job position:", error);
+        }
     };
 
     const handleExportToCSV = () => {
@@ -138,62 +222,70 @@ const AppContent: React.FC = () => {
             <Header />
             <main className="container mx-auto px-4 pb-8">
                 <SubscriptionGate>
-                    {role === 'owner' && (
-                        <div className="mb-8 flex flex-wrap gap-2 p-2 bg-gray-200 dark:bg-gray-700/50 rounded-lg noprint">
-                            <button onClick={() => setView('dashboard')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${view === 'dashboard' ? 'bg-blue-600 text-white shadow' : 'bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600'}`}>{t('viewDashboard')}</button>
-                            <button onClick={() => setView('data')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${view === 'data' ? 'bg-blue-600 text-white shadow' : 'bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600'}`}>{t('viewData')}</button>
-                            <button onClick={() => setView('master')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${view === 'master' ? 'bg-blue-600 text-white shadow' : 'bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600'}`}>{t('viewMasterData')}</button>
-                            <button onClick={() => setView('audit')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${view === 'audit' ? 'bg-blue-600 text-white shadow' : 'bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600'}`}>{t('viewAuditLog')}</button>
+                    {isLoadingData ? (
+                        <div className="text-center p-16">
+                            <h2 className="text-xl font-semibold animate-pulse">Loading data from your database...</h2>
                         </div>
-                    )}
-                    
-                    {role === 'supervisor' && <ProductionForm workers={workers} rateCard={rateCard} onAddEntry={addProductionEntry} onAddTask={handleAddRateCardEntry} />}
-                    
-                    {view === 'dashboard' && role === 'owner' && <Dashboard entries={entries} />}
-                    
-                    {view === 'data' && (
-                        <div className="bg-white dark:bg-gray-800 shadow-2xl rounded-xl p-6 md:p-8">
-                            <div className="flex justify-between items-center mb-4">
-                                <h2 className="text-2xl font-bold text-gray-800 dark:text-white">{t('productionLog')}</h2>
-                                <button onClick={handleExportToCSV} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-semibold text-sm noprint">{t('exportToCSV')}</button>
-                            </div>
-                            <ProductionData entries={entries} />
-                        </div>
-                    )}
+                    ) : (
+                        <>
+                            {role === 'owner' && (
+                                <div className="mb-8 flex flex-wrap gap-2 p-2 bg-gray-200 dark:bg-gray-700/50 rounded-lg noprint">
+                                    <button onClick={() => setView('dashboard')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${view === 'dashboard' ? 'bg-blue-600 text-white shadow' : 'bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600'}`}>{t('viewDashboard')}</button>
+                                    <button onClick={() => setView('data')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${view === 'data' ? 'bg-blue-600 text-white shadow' : 'bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600'}`}>{t('viewData')}</button>
+                                    <button onClick={() => setView('master')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${view === 'master' ? 'bg-blue-600 text-white shadow' : 'bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600'}`}>{t('viewMasterData')}</button>
+                                    <button onClick={() => setView('audit')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${view === 'audit' ? 'bg-blue-600 text-white shadow' : 'bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600'}`}>{t('viewAuditLog')}</button>
+                                </div>
+                            )}
+                            
+                            {role === 'supervisor' && <ProductionForm workers={workers} rateCard={rateCard} onAddEntry={addProductionEntry} onAddTask={handleAddRateCardEntry} />}
+                            
+                            {view === 'dashboard' && role === 'owner' && <Dashboard entries={entries} />}
+                            
+                            {view === 'data' && (
+                                <div className="bg-white dark:bg-gray-800 shadow-2xl rounded-xl p-6 md:p-8">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h2 className="text-2xl font-bold text-gray-800 dark:text-white">{t('productionLog')}</h2>
+                                        <button onClick={handleExportToCSV} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-semibold text-sm noprint">{t('exportToCSV')}</button>
+                                    </div>
+                                    <ProductionData entries={entries} />
+                                </div>
+                            )}
 
-                    {view === 'audit' && role === 'owner' && <AuditLogView auditLog={auditLog} />}
-                    
-                    {view === 'master' && role === 'owner' && (
-                        <div className="space-y-8">
-                            <div className="bg-white dark:bg-gray-800 shadow-2xl rounded-xl p-6 md:p-8">
-                                <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-white">{t('workers')}</h2>
-                                <WorkersTable 
-                                    data={workers} 
-                                    onAdd={handleAddWorker}
-                                    onUpdate={handleUpdateWorker}
-                                    onDelete={handleDeleteWorker}
-                                    jobPositions={jobPositions}
-                                />
-                            </div>
-                            <div className="bg-white dark:bg-gray-800 shadow-2xl rounded-xl p-6 md:p-8">
-                                <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-white">{t('rateCard')}</h2>
-                                <RateCardTable 
-                                    data={rateCard} 
-                                    onAdd={handleAddRateCardEntry}
-                                    onUpdate={handleUpdateRateCardEntry}
-                                    onDelete={handleDeleteRateCardEntry}
-                                />
-                            </div>
-                            <div className="bg-white dark:bg-gray-800 shadow-2xl rounded-xl p-6 md:p-8">
-                                <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-white">{t('jobPositions')}</h2>
-                                <JobPositionsTable 
-                                    data={jobPositions}
-                                    onAdd={handleAddJobPosition}
-                                    onUpdate={handleUpdateJobPosition}
-                                    onDelete={handleDeleteJobPosition}
-                                />
-                            </div>
-                        </div>
+                            {view === 'audit' && role === 'owner' && <AuditLogView auditLog={auditLog} />}
+                            
+                            {view === 'master' && role === 'owner' && (
+                                <div className="space-y-8">
+                                    <div className="bg-white dark:bg-gray-800 shadow-2xl rounded-xl p-6 md:p-8">
+                                        <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-white">{t('workers')}</h2>
+                                        <WorkersTable 
+                                            data={workers} 
+                                            onAdd={handleAddWorker}
+                                            onUpdate={handleUpdateWorker}
+                                            onDelete={handleDeleteWorker}
+                                            jobPositions={jobPositions}
+                                        />
+                                    </div>
+                                    <div className="bg-white dark:bg-gray-800 shadow-2xl rounded-xl p-6 md:p-8">
+                                        <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-white">{t('rateCard')}</h2>
+                                        <RateCardTable 
+                                            data={rateCard} 
+                                            onAdd={handleAddRateCardEntry}
+                                            onUpdate={handleUpdateRateCardEntry}
+                                            onDelete={handleDeleteRateCardEntry}
+                                        />
+                                    </div>
+                                    <div className="bg-white dark:bg-gray-800 shadow-2xl rounded-xl p-6 md:p-8">
+                                        <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-white">{t('jobPositions')}</h2>
+                                        <JobPositionsTable 
+                                            data={jobPositions}
+                                            onAdd={handleAddJobPosition}
+                                            onUpdate={handleUpdateJobPosition}
+                                            onDelete={handleDeleteJobPosition}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </>
                     )}
                 </SubscriptionGate>
             </main>

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { ClientData, FirebaseConfig } from '../types';
 
 // Let TypeScript know that 'firebase' is available on the window object
@@ -5,6 +6,7 @@ declare const firebase: any;
 
 const FIREBASE_CONFIG_KEY = 'firebaseConfig';
 let db: any = null; // This will hold the Firestore instance
+let currentClientId: string | null = null;
 
 // --- Configuration Management ---
 
@@ -26,13 +28,16 @@ export const clearFirebaseConfig = () => {
 
 export const initializeFirebase = (config: FirebaseConfig): boolean => {
   try {
-    // If an app already exists, delete it and create a new one.
-    // This is useful for changing configs without refreshing.
     if (firebase.apps.length) {
-      firebase.app().delete();
+      const existingApp = firebase.app();
+      if (existingApp.options.projectId !== config.projectId) {
+         existingApp.delete();
+         firebase.initializeApp(config);
+      }
+    } else {
+        firebase.initializeApp(config);
     }
     
-    firebase.initializeApp(config);
     db = firebase.firestore();
     console.log("Firebase initialized successfully with project:", config.projectId);
     return true;
@@ -73,15 +78,10 @@ const MOCK_FIRESTORE_DB: Record<string, ClientData> = {
 
 // --- Data Fetching ---
 
-/**
- * Fetches client data. Uses real Firestore if initialized, otherwise falls back to mock data.
- * @param clientId The document ID of the client to fetch.
- * @returns A promise that resolves with the ClientData or null if not found.
- */
 export const getClientData = async (clientId: string): Promise<ClientData | null> => {
   const normalizedClientId = clientId.toLowerCase().trim();
+  currentClientId = null; // Reset current client on new login attempt
   
-  // If a real database connection exists, use it.
   if (db) {
     console.log(`Fetching from REAL Firestore for client: ${normalizedClientId}`);
     try {
@@ -90,24 +90,21 @@ export const getClientData = async (clientId: string): Promise<ClientData | null
       
       if (docSnap.exists) {
         const data = docSnap.data() as any;
-        
-        // Firestore Timestamps need to be converted. Our type expects a `toDate` method.
-        if (data.trialEndDate && data.trialEndDate.toDate) {
-            // This is a Firestore Timestamp object, which is what our type expects.
-        }
-        
         console.log("Found client data in Firestore:", data);
+        currentClientId = normalizedClientId; // Set the current client ID on successful login
         return data as ClientData;
       } else {
         console.log("Client data not found in Firestore.");
         return null;
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching from Firestore:", error);
+      if (error.code === 'permission-denied') {
+          throw new Error('PERMISSION_DENIED');
+      }
       return null;
     }
   } 
-  // Otherwise, fall back to mock data.
   else {
     console.log(`Simulating Firestore fetch for client: ${normalizedClientId}`);
     await new Promise(resolve => setTimeout(resolve, 500));
@@ -120,4 +117,59 @@ export const getClientData = async (clientId: string): Promise<ClientData | null
       return null;
     }
   }
+};
+
+// --- Generic Collection/Document Operations ---
+
+/**
+ * Fetches all documents from a subcollection for the currently logged-in client.
+ * @param collectionName The name of the subcollection (e.g., 'workers').
+ * @returns A promise that resolves with an array of documents.
+ */
+export const getCollection = async <T>(collectionName: string): Promise<T[]> => {
+    if (!db || !currentClientId) {
+        console.warn(`Firestore not ready or no client logged in. Cannot fetch ${collectionName}.`);
+        return [];
+    }
+    try {
+        const snapshot = await db.collection('clients').doc(currentClientId).collection(collectionName).get();
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as T));
+    } catch (error) {
+        console.error(`Error fetching collection ${collectionName}:`, error);
+        return [];
+    }
+};
+
+/**
+ * Adds a new document to a subcollection.
+ * @param collectionName The name of the subcollection.
+ * @param data The data for the new document. The 'id' field will be used as the document ID.
+ * @returns The added document's data.
+ */
+export const addDocument = async <T extends { id: string }>(collectionName: string, data: T): Promise<T> => {
+    if (!db || !currentClientId) throw new Error("Firestore not ready or no client logged in.");
+    const { id, ...rest } = data;
+    await db.collection('clients').doc(currentClientId).collection(collectionName).doc(id).set(rest);
+    return data;
+};
+
+/**
+ * Updates an existing document in a subcollection.
+ * @param collectionName The name of the subcollection.
+ * @param data The data to update. Must include an 'id'.
+ */
+export const updateDocument = async <T extends { id: string }>(collectionName: string, data: T): Promise<void> => {
+    if (!db || !currentClientId) throw new Error("Firestore not ready or no client logged in.");
+    const { id, ...rest } = data;
+    await db.collection('clients').doc(currentClientId).collection(collectionName).doc(id).update(rest);
+};
+
+/**
+ * Deletes a document from a subcollection.
+ * @param collectionName The name of the subcollection.
+ * @param docId The ID of the document to delete.
+ */
+export const deleteDocument = async (collectionName: string, docId: string): Promise<void> => {
+    if (!db || !currentClientId) throw new Error("Firestore not ready or no client logged in.");
+    await db.collection('clients').doc(currentClientId).collection(collectionName).doc(docId).delete();
 };

@@ -1,3 +1,4 @@
+// FIX: Removed self-import of 'FirebaseTimestamp' to resolve the name conflict error. The interface is defined within this file.
 export type Shift = 'Day' | 'Night';
 export type UserRole = 'owner' | 'supervisor';
 export type SubscriptionStatus = 'TRIAL' | 'PAID' | 'EXPIRED' | 'INVALID';
@@ -38,6 +39,7 @@ export type AuditAction = 'CREATE' | 'UPDATE' | 'DELETE';
 export type AuditTarget = 'PRODUCTION_ENTRY' | 'WORKER' | 'RATE_CARD' | 'JOB_POSITION';
 
 export interface AuditEntry {
+  id: string;
   timestamp: string; // ISO 8601 format
   user: UserRole;
   action: AuditAction;
@@ -56,6 +58,7 @@ export interface ClientData {
   clientName: string;
   subscriptionStatus: 'TRIAL' | 'PAID';
   trialEndDate?: FirebaseTimestamp;
+  ownerPassword?: string; // Optional field for role security
 }
 
 export interface FirebaseConfig {
