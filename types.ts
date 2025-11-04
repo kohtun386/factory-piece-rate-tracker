@@ -57,3 +57,9 @@ export interface ClientData {
   subscriptionStatus: 'TRIAL' | 'PAID';
   trialEndDate?: FirebaseTimestamp;
 }
+
+export interface FirebaseConfig {
+  apiKey: string;
+  authDomain: string;
+  projectId: string;
+}

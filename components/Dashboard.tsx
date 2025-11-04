@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useMemo } from 'react';
 import { ProductionEntry } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -32,7 +33,6 @@ const Dashboard: React.FC<DashboardProps> = ({ entries }) => {
   }, [entries, startDate, endDate]);
 
   const payrollData = useMemo<{ workerName: string; totalPay: number }[]>(() => {
-    // Fix: Explicitly type the accumulator to ensure `totalPay` is inferred as a number.
     // FIX: Add a generic type to `reduce` to correctly type the accumulator. The initial value `{}` was causing `acc` to be inferred as `{}`, leading to type errors.
     const payroll = filteredEntries.reduce<Record<string, number>>((acc, entry) => {
       acc[entry.workerName] = (acc[entry.workerName] || 0) + entry.basePay;
@@ -44,8 +44,8 @@ const Dashboard: React.FC<DashboardProps> = ({ entries }) => {
   }, [filteredEntries]);
 
   const productivityData = useMemo<{ Day: number; Night: number }>(() => {
-    // Fix: Explicitly type the accumulator to ensure correct type inference for productivity data.
-    return filteredEntries.reduce((acc: { Day: number, Night: number }, entry) => {
+    // FIX: Explicitly type the accumulator to ensure correct type inference for productivity data.
+    return filteredEntries.reduce<{ Day: number, Night: number }>((acc, entry) => {
         acc[entry.shift] = (acc[entry.shift] || 0) + entry.completedQuantity;
         return acc;
     }, { Day: 0, Night: 0 });
@@ -54,7 +54,6 @@ const Dashboard: React.FC<DashboardProps> = ({ entries }) => {
   const maxProductivity = Math.max(productivityData.Day, productivityData.Night) || 1;
 
   const qualityData = useMemo<{ taskName: string; totalDefects: number }[]>(() => {
-    // Fix: Explicitly type the accumulator to ensure `totalDefects` is inferred as a number.
     // FIX: Add a generic type to `reduce` to correctly type the accumulator. The initial value `{}` was causing `acc` to be inferred as `{}`, leading to type errors.
     const defectsByPosition = filteredEntries.reduce<Record<string, number>>((acc, entry) => {
         if(entry.defectQuantity > 0) {
@@ -67,7 +66,8 @@ const Dashboard: React.FC<DashboardProps> = ({ entries }) => {
       .sort((a, b) => b.totalDefects - a.totalDefects);
   }, [filteredEntries]);
   
-  const totalDefects = qualityData.reduce((sum, item) => sum + item.totalDefects, 0);
+  // FIX: Explicitly type the accumulator 'sum' to ensure it's treated as a number.
+  const totalDefects = qualityData.reduce((sum: number, item) => sum + item.totalDefects, 0);
 
   const pieChartGradient = useMemo(() => {
     if (totalDefects === 0) return 'conic-gradient(#E5E7EB 0% 100%)';
@@ -137,7 +137,8 @@ const Dashboard: React.FC<DashboardProps> = ({ entries }) => {
             <div className="bg-gray-50 dark:bg-gray-900/50 p-6 rounded-lg">
                 <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">{t('productivityByShift')}</h3>
                 <div className="h-64 flex items-end justify-around gap-4 pt-4">
-                    {Object.entries(productivityData).map(([shift, qty]) => (
+                    {/* FIX: Explicitly type 'qty' as a number to resolve potential type inference issues. */}
+                    {Object.entries(productivityData).map(([shift, qty]: [string, number]) => (
                         <div key={shift} className="flex flex-col items-center flex-1">
                             <div className="w-full h-full flex items-end">
                                 <div 

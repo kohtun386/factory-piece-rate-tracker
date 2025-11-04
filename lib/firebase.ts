@@ -1,23 +1,51 @@
-// IMPORTANT: Replace with your actual Firebase project configuration.
-// This is placeholder data.
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+import { ClientData, FirebaseConfig } from '../types';
+
+// Let TypeScript know that 'firebase' is available on the window object
+declare const firebase: any;
+
+const FIREBASE_CONFIG_KEY = 'firebaseConfig';
+let db: any = null; // This will hold the Firestore instance
+
+// --- Configuration Management ---
+
+export const saveFirebaseConfig = (config: FirebaseConfig) => {
+  localStorage.setItem(FIREBASE_CONFIG_KEY, JSON.stringify(config));
 };
 
-// NOTE: This is a simplified, mock implementation for the browser environment.
-// It simulates fetching data from Firestore without a real backend connection.
-// In a real application, you would use the Firebase SDK.
-// e.g., import { initializeApp } from "firebase/app";
-// e.g., import { getFirestore, doc, getDoc } from "firebase/firestore";
+export const loadFirebaseConfig = (): FirebaseConfig | null => {
+  const configStr = localStorage.getItem(FIREBASE_CONFIG_KEY);
+  return configStr ? JSON.parse(configStr) : null;
+};
 
-import { ClientData } from '../types';
+export const clearFirebaseConfig = () => {
+  localStorage.removeItem(FIREBASE_CONFIG_KEY);
+  db = null; // Reset the db instance
+};
 
-// Mock Firestore database
+// --- Firebase Initialization ---
+
+export const initializeFirebase = (config: FirebaseConfig): boolean => {
+  try {
+    // If an app already exists, delete it and create a new one.
+    // This is useful for changing configs without refreshing.
+    if (firebase.apps.length) {
+      firebase.app().delete();
+    }
+    
+    firebase.initializeApp(config);
+    db = firebase.firestore();
+    console.log("Firebase initialized successfully with project:", config.projectId);
+    return true;
+  } catch (error) {
+    console.error("Firebase initialization failed:", error);
+    db = null;
+    return false;
+  }
+};
+
+
+// --- Mock Data (Fallback) ---
+
 const MOCK_FIRESTORE_DB: Record<string, ClientData> = {
   "client-001": {
     clientName: "Thiri Swe Textile Factory",
@@ -43,27 +71,53 @@ const MOCK_FIRESTORE_DB: Record<string, ClientData> = {
   }
 };
 
+// --- Data Fetching ---
 
 /**
- * Fetches client data from the Firestore 'clients' collection.
- * In a real app, this would be an async call to Firebase.
- * For this environment, it's a synchronous lookup in a mock object.
- * 
+ * Fetches client data. Uses real Firestore if initialized, otherwise falls back to mock data.
  * @param clientId The document ID of the client to fetch.
  * @returns A promise that resolves with the ClientData or null if not found.
  */
 export const getClientData = async (clientId: string): Promise<ClientData | null> => {
-  console.log(`Simulating Firestore fetch for client: ${clientId}`);
-  // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 500));
-
-  const clientData = MOCK_FIRESTORE_DB[clientId.toLowerCase().trim()];
+  const normalizedClientId = clientId.toLowerCase().trim();
   
-  if (clientData) {
-    console.log("Found client data:", clientData);
-    return clientData;
-  } else {
-    console.log("Client data not found.");
-    return null;
+  // If a real database connection exists, use it.
+  if (db) {
+    console.log(`Fetching from REAL Firestore for client: ${normalizedClientId}`);
+    try {
+      const docRef = db.collection('clients').doc(normalizedClientId);
+      const docSnap = await docRef.get();
+      
+      if (docSnap.exists) {
+        const data = docSnap.data() as any;
+        
+        // Firestore Timestamps need to be converted. Our type expects a `toDate` method.
+        if (data.trialEndDate && data.trialEndDate.toDate) {
+            // This is a Firestore Timestamp object, which is what our type expects.
+        }
+        
+        console.log("Found client data in Firestore:", data);
+        return data as ClientData;
+      } else {
+        console.log("Client data not found in Firestore.");
+        return null;
+      }
+    } catch (error) {
+      console.error("Error fetching from Firestore:", error);
+      return null;
+    }
+  } 
+  // Otherwise, fall back to mock data.
+  else {
+    console.log(`Simulating Firestore fetch for client: ${normalizedClientId}`);
+    await new Promise(resolve => setTimeout(resolve, 500));
+    const clientData = MOCK_FIRESTORE_DB[normalizedClientId];
+    if (clientData) {
+      console.log("Found mock data:", clientData);
+      return clientData;
+    } else {
+      console.log("Client data not found in mock DB.");
+      return null;
+    }
   }
 };
