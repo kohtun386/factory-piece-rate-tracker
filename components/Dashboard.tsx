@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo } from 'react';
 import { ProductionEntry } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -31,8 +32,9 @@ const Dashboard: React.FC<DashboardProps> = ({ entries }) => {
   }, [entries, startDate, endDate]);
 
   const payrollData = useMemo<{ workerName: string; totalPay: number }[]>(() => {
-    // FIX: Explicitly type the accumulator in the reduce function to ensure correct type inference.
-    const payroll = filteredEntries.reduce((acc: Record<string, number>, entry) => {
+    // FIX: Correctly typed the reduce accumulator by providing a generic type argument to the reduce function.
+    // This resolves issues where the accumulator type is not correctly inferred from the initial value (`{}`).
+    const payroll = filteredEntries.reduce<Record<string, number>>((acc, entry) => {
       acc[entry.workerName] = (acc[entry.workerName] || 0) + entry.basePay;
       return acc;
     }, {});
@@ -51,8 +53,9 @@ const Dashboard: React.FC<DashboardProps> = ({ entries }) => {
   const maxProductivity = Math.max(productivityData.Day, productivityData.Night) || 1;
 
   const qualityData = useMemo<{ taskName: string; totalDefects: number }[]>(() => {
-    // FIX: Explicitly type the accumulator in the reduce function to ensure correct type inference.
-    const defectsByPosition = filteredEntries.reduce((acc: Record<string, number>, entry) => {
+    // FIX: Correctly typed the reduce accumulator by providing a generic type argument to the reduce function.
+    // This resolves issues where the accumulator type is not correctly inferred from the initial value (`{}`).
+    const defectsByPosition = filteredEntries.reduce<Record<string, number>>((acc, entry) => {
         if(entry.defectQuantity > 0) {
             acc[entry.taskName] = (acc[entry.taskName] || 0) + entry.defectQuantity;
         }
