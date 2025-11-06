@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { initializeFirebase, saveFirebaseConfig, loadFirebaseConfig, clearFirebaseConfig } from '../lib/firebase';
 import { FirebaseConfig } from '../types';
+import { defaultConfig } from '../lib/firebaseConfig';
 
 const LoginScreen: React.FC = () => {
   const { login, isLoading } = useAuth();
@@ -13,14 +14,23 @@ const LoginScreen: React.FC = () => {
   const [showConfig, setShowConfig] = useState(false);
   const [config, setConfig] = useState<FirebaseConfig>({ apiKey: '', authDomain: '', projectId: '' });
   const [configStatus, setConfigStatus] = useState('');
-  const [isUsingCustomConfig, setIsUsingCustomConfig] = useState(false);
+  const [isUsingFirebase, setIsUsingFirebase] = useState(false);
 
   useEffect(() => {
+    const useDemo = localStorage.getItem('useDemoData') === 'true';
+
+    if (useDemo) {
+        setIsUsingFirebase(false);
+        return;
+    }
+
     const loadedConfig = loadFirebaseConfig();
-    if (loadedConfig) {
-      setConfig(loadedConfig);
-      if (initializeFirebase(loadedConfig)) {
-        setIsUsingCustomConfig(true);
+    const initialConfig = loadedConfig || defaultConfig;
+
+    if (initialConfig) {
+      setConfig(initialConfig);
+      if (initializeFirebase(initialConfig)) {
+        setIsUsingFirebase(true);
       }
     }
   }, []);
@@ -48,10 +58,9 @@ const LoginScreen: React.FC = () => {
     if (config.apiKey && config.authDomain && config.projectId) {
       if (initializeFirebase(config)) {
         saveFirebaseConfig(config);
-        setConfigStatus(t('configSaved'));
-        setIsUsingCustomConfig(true);
-        setShowConfig(false); // Hide form on success
-        setTimeout(() => setConfigStatus(''), 5000);
+        localStorage.removeItem('useDemoData');
+        // Reload to ensure the new Firebase connection is used cleanly
+        window.location.reload();
       } else {
         setConfigStatus('Failed to connect with these details. Check console for errors.');
       }
@@ -60,12 +69,9 @@ const LoginScreen: React.FC = () => {
     }
   };
 
-  const handleClearConfig = () => {
+  const handleUseDemoData = () => {
     clearFirebaseConfig();
-    setConfig({ apiKey: '', authDomain: '', projectId: '' });
-    setConfigStatus(t('configCleared'));
-    setIsUsingCustomConfig(false);
-    setTimeout(() => setConfigStatus(''), 5000);
+    localStorage.setItem('useDemoData', 'true');
     // Reload to ensure all states are reset cleanly and mock data is used
     window.location.reload();
   };
@@ -115,7 +121,7 @@ const LoginScreen: React.FC = () => {
               </div>
             </form>
             
-            {!isUsingCustomConfig && (
+            {!isUsingFirebase && (
                 <div className="text-center text-xs text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700 pt-4">
                 <p className="font-semibold mb-2">{t('demoIdsHint')}</p>
                 <div className="flex justify-center gap-2 flex-wrap">
@@ -137,11 +143,11 @@ const LoginScreen: React.FC = () => {
         {/* --- Configuration UI --- */}
         <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
             <div className="text-center">
-                {isUsingCustomConfig && !showConfig && (
+                {isUsingFirebase && !showConfig && (
                     <p className="text-xs text-green-600 dark:text-green-400 mb-2">Connected to your Firebase project.</p>
                 )}
                 <button onClick={() => setShowConfig(!showConfig)} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
-                    {showConfig ? t('cancel') : isUsingCustomConfig ? t('editConfig') : t('connectToFirebase')}
+                    {showConfig ? t('cancel') : isUsingFirebase ? t('editConfig') : t('connectToFirebase')}
                 </button>
             </div>
             {showConfig && (
@@ -162,7 +168,7 @@ const LoginScreen: React.FC = () => {
                     </div>
                     <div className="flex gap-2">
                         <button onClick={handleSaveConfig} className="flex-1 px-3 py-2 text-xs font-medium text-white bg-green-600 rounded-md hover:bg-green-700">{t('saveConfig')}</button>
-                        <button onClick={handleClearConfig} className="flex-1 px-3 py-2 text-xs font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">{t('clearConfig')}</button>
+                        <button onClick={handleUseDemoData} className="flex-1 px-3 py-2 text-xs font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">{t('useDemoData')}</button>
                     </div>
                     {configStatus && <p className="text-xs text-center pt-2 text-gray-600 dark:text-gray-300">{configStatus}</p>}
                 </div>

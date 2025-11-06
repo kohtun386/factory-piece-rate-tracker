@@ -1,11 +1,19 @@
-// @ts-nocheck
+import { initializeApp, getApp, getApps, FirebaseApp } from "firebase/app";
+import { 
+    getFirestore, 
+    collection, 
+    doc, 
+    getDoc, 
+    getDocs, 
+    setDoc, 
+    updateDoc, 
+    deleteDoc, 
+    Firestore 
+} from "firebase/firestore";
 import { ClientData, FirebaseConfig } from '../types';
 
-// Let TypeScript know that 'firebase' is available on the window object
-declare const firebase: any;
-
 const FIREBASE_CONFIG_KEY = 'firebaseConfig';
-let db: any = null; // This will hold the Firestore instance
+let db: Firestore | null = null;
 let currentClientId: string | null = null;
 
 // --- Configuration Management ---
@@ -28,18 +36,16 @@ export const clearFirebaseConfig = () => {
 
 export const initializeFirebase = (config: FirebaseConfig): boolean => {
   try {
-    if (firebase.apps.length) {
-      const existingApp = firebase.app();
-      if (existingApp.options.projectId !== config.projectId) {
-         existingApp.delete();
-         firebase.initializeApp(config);
-      }
+    // With the page reloading on config change, we only need to initialize once.
+    if (getApps().length === 0) {
+      const app: FirebaseApp = initializeApp(config);
+      db = getFirestore(app);
+      console.log("Firebase initialized successfully with project:", config.projectId);
     } else {
-        firebase.initializeApp(config);
+      // App is already initialized, possibly due to HMR in dev.
+      const app: FirebaseApp = getApp();
+      db = getFirestore(app);
     }
-    
-    db = firebase.firestore();
-    console.log("Firebase initialized successfully with project:", config.projectId);
     return true;
   } catch (error) {
     console.error("Firebase initialization failed:", error);
@@ -85,10 +91,10 @@ export const getClientData = async (clientId: string): Promise<ClientData | null
   if (db) {
     console.log(`Fetching from REAL Firestore for client: ${normalizedClientId}`);
     try {
-      const docRef = db.collection('clients').doc(normalizedClientId);
-      const docSnap = await docRef.get();
+      const docRef = doc(db, 'clients', normalizedClientId);
+      const docSnap = await getDoc(docRef);
       
-      if (docSnap.exists) {
+      if (docSnap.exists()) {
         const data = docSnap.data() as any;
         console.log("Found client data in Firestore:", data);
         currentClientId = normalizedClientId; // Set the current client ID on successful login
@@ -132,7 +138,8 @@ export const getCollection = async <T>(collectionName: string): Promise<T[]> => 
         return [];
     }
     try {
-        const snapshot = await db.collection('clients').doc(currentClientId).collection(collectionName).get();
+        const collectionRef = collection(db, 'clients', currentClientId, collectionName);
+        const snapshot = await getDocs(collectionRef);
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as T));
     } catch (error) {
         console.error(`Error fetching collection ${collectionName}:`, error);
@@ -149,7 +156,8 @@ export const getCollection = async <T>(collectionName: string): Promise<T[]> => 
 export const addDocument = async <T extends { id: string }>(collectionName: string, data: T): Promise<T> => {
     if (!db || !currentClientId) throw new Error("Firestore not ready or no client logged in.");
     const { id, ...rest } = data;
-    await db.collection('clients').doc(currentClientId).collection(collectionName).doc(id).set(rest);
+    const docRef = doc(db, 'clients', currentClientId, collectionName, id);
+    await setDoc(docRef, rest);
     return data;
 };
 
@@ -161,7 +169,8 @@ export const addDocument = async <T extends { id: string }>(collectionName: stri
 export const updateDocument = async <T extends { id: string }>(collectionName: string, data: T): Promise<void> => {
     if (!db || !currentClientId) throw new Error("Firestore not ready or no client logged in.");
     const { id, ...rest } = data;
-    await db.collection('clients').doc(currentClientId).collection(collectionName).doc(id).update(rest);
+    const docRef = doc(db, 'clients', currentClientId, collectionName, id);
+    await updateDoc(docRef, rest);
 };
 
 /**
@@ -171,5 +180,6 @@ export const updateDocument = async <T extends { id: string }>(collectionName: s
  */
 export const deleteDocument = async (collectionName: string, docId: string): Promise<void> => {
     if (!db || !currentClientId) throw new Error("Firestore not ready or no client logged in.");
-    await db.collection('clients').doc(currentClientId).collection(collectionName).doc(docId).delete();
+    const docRef = doc(db, 'clients', currentClientId, collectionName, docId);
+    await deleteDoc(docRef);
 };

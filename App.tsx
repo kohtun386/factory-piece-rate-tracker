@@ -11,6 +11,7 @@ import JobPositionsTable from './components/JobPositionsTable';
 import AuditLogView from './components/AuditLogView';
 import LoginScreen from './components/LoginScreen';
 import SubscriptionGate from './components/SubscriptionGate';
+import PrintableLog from './components/PrintableLog';
 import { ProductionEntry, RateCardEntry, Worker, JobPosition, AuditEntry, AuditAction, AuditTarget } from './types';
 import { getCollection, addDocument, updateDocument, deleteDocument } from './lib/firebase';
 
@@ -243,11 +244,17 @@ const AppContent: React.FC = () => {
                             
                             {view === 'data' && (
                                 <div className="bg-white dark:bg-gray-800 shadow-2xl rounded-xl p-6 md:p-8">
-                                    <div className="flex justify-between items-center mb-4">
+                                    <div className="flex justify-between items-center mb-4 noprint">
                                         <h2 className="text-2xl font-bold text-gray-800 dark:text-white">{t('productionLog')}</h2>
-                                        <button onClick={handleExportToCSV} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-semibold text-sm noprint">{t('exportToCSV')}</button>
+                                        <div className="flex items-center gap-2">
+                                            <button onClick={() => window.print()} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-semibold text-sm">{t('printReport')}</button>
+                                            <button onClick={handleExportToCSV} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-semibold text-sm">{t('exportToCSV')}</button>
+                                        </div>
                                     </div>
                                     <ProductionData entries={entries} />
+                                    <div className="hidden printable-area">
+                                        <PrintableLog entries={entries} />
+                                    </div>
                                 </div>
                             )}
 

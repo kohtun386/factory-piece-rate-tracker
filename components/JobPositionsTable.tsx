@@ -89,13 +89,13 @@ const JobPositionsTable: React.FC<JobPositionsTableProps> = ({ data, onAdd, onUp
                 <td className="px-6 py-4 flex items-center space-x-2">
                     {editingName === position.englishName ? (
                         <>
-                            <button onClick={handleSave} className="font-medium text-green-600 dark:text-green-500 hover:underline">{t('save')}</button>
-                            <button onClick={handleCancel} className="font-medium text-gray-600 dark:text-gray-400 hover:underline">{t('cancel')}</button>
+                            <button onClick={handleSave} className="px-3 py-1 text-sm font-semibold text-white bg-green-600 rounded-md hover:bg-green-700">{t('save')}</button>
+                            <button onClick={handleCancel} className="px-3 py-1 text-sm font-semibold text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">{t('cancel')}</button>
                         </>
                     ) : (
                         <>
-                            <button onClick={() => handleEdit(position)} className="font-medium text-blue-600 dark:text-blue-500 hover:underline">{t('edit')}</button>
-                            <button onClick={() => onDelete(position.englishName)} className="font-medium text-red-600 dark:text-red-500 hover:underline">{t('delete')}</button>
+                            <button onClick={() => handleEdit(position)} className="px-3 py-1 text-sm font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700">{t('edit')}</button>
+                            <button onClick={() => onDelete(position.englishName)} className="px-3 py-1 text-sm font-semibold text-white bg-red-600 rounded-md hover:bg-red-700">{t('delete')}</button>
                         </>
                     )}
                 </td>
