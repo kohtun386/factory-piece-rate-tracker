@@ -1,6 +1,9 @@
 import { initializeApp, getApp, getApps, FirebaseApp } from "firebase/app";
 import { 
-    getFirestore, 
+    getFirestore,
+    initializeFirestore,
+    persistentLocalCache,
+    persistentMultipleTabManager,
     collection, 
     doc, 
     getDoc, 
@@ -36,17 +39,32 @@ export const clearFirebaseConfig = () => {
 
 export const initializeFirebase = (config: FirebaseConfig): boolean => {
   try {
-    // With the page reloading on config change, we only need to initialize once.
+    let app: FirebaseApp;
+    // Initialize the main Firebase App
     if (getApps().length === 0) {
-      const app: FirebaseApp = initializeApp(config);
-      db = getFirestore(app);
-      console.log("Firebase initialized successfully with project:", config.projectId);
+      app = initializeApp(config);
     } else {
-      // App is already initialized, possibly due to HMR in dev.
-      const app: FirebaseApp = getApp();
+      app = getApp();
+    }
+    
+    // Attempt to initialize Firestore with modern persistence settings
+    try {
+      db = initializeFirestore(app, {
+        experimentalForceLongPolling: true, // Helps bypass WebSocket issues in restricted environments
+        localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+      });
+      console.log("Firestore offline persistence enabled via modern API.");
+
+    } catch (e) {
+      // This can happen if Firestore is already initialized (e.g., with hot-reloading)
+      // In this case, just get the existing instance.
+      console.warn("Re-initialization of Firestore caught, getting existing instance.");
       db = getFirestore(app);
     }
+
+    console.log("Firebase initialized successfully with project:", config.projectId);
     return true;
+
   } catch (error) {
     console.error("Firebase initialization failed:", error);
     db = null;

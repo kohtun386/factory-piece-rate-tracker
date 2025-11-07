@@ -14,6 +14,7 @@ import SubscriptionGate from './components/SubscriptionGate';
 import PrintableLog from './components/PrintableLog';
 import { ProductionEntry, RateCardEntry, Worker, JobPosition, AuditEntry, AuditAction, AuditTarget } from './types';
 import { getCollection, addDocument, updateDocument, deleteDocument } from './lib/firebase';
+import './index.css';
 
 type View = 'dashboard' | 'data' | 'master' | 'audit';
 

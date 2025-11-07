@@ -1,5 +1,3 @@
-
-
 import React, { useState, useMemo } from 'react';
 import { ProductionEntry } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -32,10 +30,10 @@ const Dashboard: React.FC<DashboardProps> = ({ entries }) => {
   }, [entries, startDate, endDate]);
 
   const payrollData = useMemo<{ workerName: string; totalPay: number }[]>(() => {
-    // FIX: Correctly typed the reduce accumulator by providing a generic type argument to the reduce function.
-    // This resolves issues where the accumulator type is not correctly inferred from the initial value (`{}`).
     const payroll = filteredEntries.reduce<Record<string, number>>((acc, entry) => {
-      acc[entry.workerName] = (acc[entry.workerName] || 0) + entry.basePay;
+      // FIX: Explicitly cast values to numbers to resolve type ambiguity during the arithmetic operation.
+      const pay = Number(entry.basePay) || 0;
+      acc[entry.workerName] = (acc[entry.workerName] || 0) + pay;
       return acc;
     }, {});
     return Object.entries(payroll)
@@ -45,7 +43,8 @@ const Dashboard: React.FC<DashboardProps> = ({ entries }) => {
 
   const productivityData = useMemo<{ Day: number; Night: number }>(() => {
     return filteredEntries.reduce<{ Day: number, Night: number }>((acc, entry) => {
-        acc[entry.shift] = (acc[entry.shift] || 0) + entry.completedQuantity;
+        const completedQty = Number(entry.completedQuantity) || 0;
+        acc[entry.shift] = (acc[entry.shift] || 0) + completedQty;
         return acc;
     }, { Day: 0, Night: 0 });
   }, [filteredEntries]);
@@ -53,11 +52,11 @@ const Dashboard: React.FC<DashboardProps> = ({ entries }) => {
   const maxProductivity = Math.max(productivityData.Day, productivityData.Night) || 1;
 
   const qualityData = useMemo<{ taskName: string; totalDefects: number }[]>(() => {
-    // FIX: Correctly typed the reduce accumulator by providing a generic type argument to the reduce function.
-    // This resolves issues where the accumulator type is not correctly inferred from the initial value (`{}`).
     const defectsByPosition = filteredEntries.reduce<Record<string, number>>((acc, entry) => {
-        if(entry.defectQuantity > 0) {
-            acc[entry.taskName] = (acc[entry.taskName] || 0) + entry.defectQuantity;
+        const defectQty = Number(entry.defectQuantity) || 0;
+        if(defectQty > 0) {
+            // FIX: Explicitly cast values to numbers to resolve type ambiguity during the arithmetic operation.
+            acc[entry.taskName] = (acc[entry.taskName] || 0) + defectQty;
         }
         return acc;
     }, {});
@@ -66,7 +65,7 @@ const Dashboard: React.FC<DashboardProps> = ({ entries }) => {
       .sort((a, b) => b.totalDefects - a.totalDefects);
   }, [filteredEntries]);
   
-  const totalDefects = qualityData.reduce((sum: number, item) => sum + item.totalDefects, 0);
+  const totalDefects = qualityData.reduce((sum, item) => sum + (Number(item.totalDefects) || 0), 0);
 
   const pieChartGradient = useMemo(() => {
     if (totalDefects === 0) return 'conic-gradient(#E5E7EB 0% 100%)';
