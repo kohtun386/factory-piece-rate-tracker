@@ -7,8 +7,8 @@ export interface ProductionEntry {
   id: string;
   date: string; // YYYY-MM-DD
   shift: Shift;
-  workerName: string;
-  taskName: string;
+  workerName: string; // This is OK for a "log" - it's a snapshot in time
+  taskName: string;   // This is also OK for a "log"
   completedQuantity: number;
   defectQuantity: number;
   pieceRate: number; // in Ks
@@ -16,10 +16,12 @@ export interface ProductionEntry {
   deductionAmount: number; // in Ks
 }
 
+// === ပြင်ဆင်မှု ၁ ===
+// "position: string" (နာမည်) အစား "positionId: string" (ID) ကို သုံးပါမယ်။
 export interface Worker {
   id: string;
   name: string;
-  position: string;
+  positionId: string; // <--- THIS IS THE FIX
 }
 
 export interface RateCardEntry {
@@ -29,7 +31,10 @@ export interface RateCardEntry {
   rate: number; // piece rate in Ks
 }
 
+// === ပြင်ဆင်မှု ၂ ===
+// JobPosition ကို သူ့ရဲ့ ကိုယ်ပိုင် "id" တစ်ခု ထည့်ပေးလိုက်ပါတယ်။
 export interface JobPosition {
+  id: string; // <--- THIS IS THE FIX (e.g., "jp_001" or a random Firestore ID)
   englishName: string;
   myanmarName: string;
   notes: string;
@@ -38,7 +43,7 @@ export interface JobPosition {
 export interface PaymentLog {
   id: string;
   workerId: string;
-  workerName: string;
+  workerName: string; // This is OK for a "log"
   date: string; // YYYY-MM-DD
   amount: number; // in Ks
   notes?: string;
