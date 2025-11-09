@@ -35,8 +35,17 @@ export interface JobPosition {
   notes: string;
 }
 
+export interface PaymentLog {
+  id: string;
+  workerId: string;
+  workerName: string;
+  date: string; // YYYY-MM-DD
+  amount: number; // in Ks
+  notes?: string;
+}
+
 export type AuditAction = 'CREATE' | 'UPDATE' | 'DELETE';
-export type AuditTarget = 'PRODUCTION_ENTRY' | 'WORKER' | 'RATE_CARD' | 'JOB_POSITION';
+export type AuditTarget = 'PRODUCTION_ENTRY' | 'WORKER' | 'RATE_CARD' | 'JOB_POSITION' | 'PAYMENT_LOG';
 
 export interface AuditEntry {
   id: string;

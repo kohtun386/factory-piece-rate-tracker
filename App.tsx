@@ -12,11 +12,12 @@ import AuditLogView from './components/AuditLogView';
 import LoginScreen from './components/LoginScreen';
 import SubscriptionGate from './components/SubscriptionGate';
 import PrintableLog from './components/PrintableLog';
-import { ProductionEntry, RateCardEntry, Worker, JobPosition, AuditEntry, AuditAction, AuditTarget } from './types';
+import WorkerLogsPage from './components/WorkerLogsPage';
+import { ProductionEntry, RateCardEntry, Worker, JobPosition, AuditEntry, AuditAction, AuditTarget, PaymentLog } from './types';
 import { getCollection, addDocument, updateDocument, deleteDocument } from './lib/firebase';
 import './index.css';
 
-type View = 'dashboard' | 'data' | 'master' | 'audit';
+type View = 'dashboard' | 'data' | 'master' | 'audit' | 'workerLogs';
 
 // Helper to add an 'id' to a JobPosition for Firestore compatibility
 const jobPositionToDoc = (position: JobPosition) => ({ ...position, id: position.englishName });
@@ -30,6 +31,7 @@ const AppContent: React.FC = () => {
     const [rateCard, setRateCard] = useState<RateCardEntry[]>([]);
     const [jobPositions, setJobPositions] = useState<JobPosition[]>([]);
     const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
+    const [paymentLogs, setPaymentLogs] = useState<PaymentLog[]>([]);
     const [view, setView] = useState<View>(role === 'owner' ? 'dashboard' : 'data');
 
     const logAuditEvent = useCallback(async (action: AuditAction, target: AuditTarget, details: string) => {
@@ -55,12 +57,13 @@ const AppContent: React.FC = () => {
                 setIsLoadingData(true);
                 console.log("Fetching all collections from Firestore...");
                 try {
-                    const [workersData, rateCardData, jobPositionsData, entriesData, auditLogData] = await Promise.all([
+                    const [workersData, rateCardData, jobPositionsData, entriesData, auditLogData, paymentLogsData] = await Promise.all([
                         getCollection<Worker>('workers'),
                         getCollection<RateCardEntry>('rateCard'),
                         getCollection<JobPosition>('jobPositions'),
                         getCollection<ProductionEntry>('productionEntries'),
                         getCollection<AuditEntry>('auditLog'),
+                        getCollection<PaymentLog>('paymentLogs'),
                     ]);
 
                     setWorkers(workersData);
@@ -68,6 +71,7 @@ const AppContent: React.FC = () => {
                     setJobPositions(jobPositionsData);
                     setEntries(entriesData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
                     setAuditLog(auditLogData.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+                    setPaymentLogs(paymentLogsData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
 
                     console.log("All data fetched successfully.");
                 } catch (error) {
@@ -191,6 +195,16 @@ const AppContent: React.FC = () => {
         }
     };
 
+    const handleAddPaymentLog = async (payment: PaymentLog) => {
+        try {
+            const newPayment = await addDocument<PaymentLog>('paymentLogs', payment);
+            setPaymentLogs(prev => [newPayment, ...prev].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+            logAuditEvent('CREATE', 'PAYMENT_LOG', `Logged payment of ${payment.amount} Ks for ${payment.workerName}`);
+        } catch (error) {
+            console.error("Failed to add payment log:", error);
+        }
+    };
+
     const handleExportToCSV = () => {
         const headers = ['ID', 'Date', 'Shift', 'Worker Name', 'Task Name', 'Completed Qty', 'Defect Qty', 'Piece Rate', 'Base Pay', 'Deduction'];
         const rows = entries.map(entry => [
@@ -234,6 +248,7 @@ const AppContent: React.FC = () => {
                                 <div className="mb-8 flex flex-wrap gap-2 p-2 bg-gray-200 dark:bg-gray-700/50 rounded-lg noprint">
                                     <button onClick={() => setView('dashboard')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${view === 'dashboard' ? 'bg-blue-600 text-white shadow' : 'bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600'}`}>{t('viewDashboard')}</button>
                                     <button onClick={() => setView('data')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${view === 'data' ? 'bg-blue-600 text-white shadow' : 'bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600'}`}>{t('viewData')}</button>
+                                    <button onClick={() => setView('workerLogs')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${view === 'workerLogs' ? 'bg-blue-600 text-white shadow' : 'bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600'}`}>{t('viewWorkerLogs')}</button>
                                     <button onClick={() => setView('master')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${view === 'master' ? 'bg-blue-600 text-white shadow' : 'bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600'}`}>{t('viewMasterData')}</button>
                                     <button onClick={() => setView('audit')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${view === 'audit' ? 'bg-blue-600 text-white shadow' : 'bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600'}`}>{t('viewAuditLog')}</button>
                                 </div>
@@ -260,6 +275,15 @@ const AppContent: React.FC = () => {
                             )}
 
                             {view === 'audit' && role === 'owner' && <AuditLogView auditLog={auditLog} />}
+
+                            {view === 'workerLogs' && role === 'owner' && (
+                                <WorkerLogsPage
+                                    workers={workers}
+                                    entries={entries}
+                                    paymentLogs={paymentLogs}
+                                    onAddPayment={handleAddPaymentLog}
+                                />
+                            )}
                             
                             {view === 'master' && role === 'owner' && (
                                 <div className="space-y-8">
