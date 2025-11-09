@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Worker, JobPosition } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -17,15 +16,21 @@ const WorkersTable: React.FC<WorkersTableProps> = ({ data, jobPositions, onAdd, 
   const { role } = useAuth();
   
   const [editingId, setEditingId] = useState<string | null>(null);
+  
+  // === ပြင်ဆင်မှု ၁ ===
+  // "editedData" က "types.ts" (Blueprint) အသစ်နဲ့ ကိုက်ညီနေရပါမယ်။
   const [editedData, setEditedData] = useState<Partial<Worker>>({});
 
   const [newId, setNewId] = useState('');
   const [newName, setNewName] = useState('');
-  const [newPosition, setNewPosition] = useState('');
+  
+  // === ပြင်ဆင်မှု ၂ ===
+  // "newPosition" (နာမည်) အစား "newPositionId" (ID) ကို မှတ်သားပါမယ်။
+  const [newPositionId, setNewPositionId] = useState('');
 
   const handleEdit = (worker: Worker) => {
     setEditingId(worker.id);
-    setEditedData(worker);
+    setEditedData(worker); // "worker" object မှာ "positionId" (ID) ပါလာပါပြီ။
   };
 
   const handleCancel = () => {
@@ -35,6 +40,7 @@ const WorkersTable: React.FC<WorkersTableProps> = ({ data, jobPositions, onAdd, 
 
   const handleSave = () => {
     if (editingId && editedData) {
+      // "editedData" မှာ "positionId" (ID) အသစ် ပါသွားပါပြီ။
       onUpdate(editedData as Worker);
       handleCancel();
     }
@@ -42,15 +48,31 @@ const WorkersTable: React.FC<WorkersTableProps> = ({ data, jobPositions, onAdd, 
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
-    if (newId && newName && newPosition) {
-      onAdd({ id: newId, name: newName, position: newPosition });
+    
+    // === ပြင်ဆင်မှု ၃ ===
+    // "newPosition" (နာမည်) အစား "newPositionId" (ID) ကို check လုပ်ပါ။
+    if (newId && newName && newPositionId) {
+      
+      // "onAdd" ကို ခေါ်တဲ့အခါ "Blueprint" အသစ် (`types.ts`) အတိုင်း၊
+      // "positionId" (ID) ကို ထည့်သွင်း ပို့ပေးလိုက်ပါ။
+      onAdd({ id: newId, name: newName, positionId: newPositionId });
+      
       setNewId('');
       setNewName('');
-      setNewPosition('');
+      setNewPositionId(''); // State ကို ID နဲ့ပဲ reset လုပ်ပါ။
     }
   };
   
   const isOwner = role === 'owner';
+
+  // === ပြင်ဆင်မှု ၄ ===
+  // ဇယား (Table) ထဲမှာ "ID" ("jp_001") ကို "နာမည်" ("Loom Operator") ပြောင်းပြီး ပြသဖို့ Function
+  const getPositionName = (positionId: string) => {
+    // "jobPositions" array ထဲက "positionId" နဲ့ တူတဲ့ "id" ကို ရှာပါ။
+    const position = jobPositions.find(p => p.id === positionId);
+    // တွေ့ရင် "englishName" (နာမည်) ကို ပြန်ပေးပါ။ မတွေ့ရင် "ID" အတိုင်းပဲ ပြန်ပေးပါ။
+    return position ? position.englishName : positionId;
+  };
 
   return (
     <div className="overflow-x-auto">
@@ -76,12 +98,24 @@ const WorkersTable: React.FC<WorkersTableProps> = ({ data, jobPositions, onAdd, 
               </td>
               <td className="px-6 py-4">
                 {editingId === worker.id ? (
-                  <select value={editedData.position || ''} onChange={(e) => setEditedData({...editedData, position: e.target.value})} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                  // === ပြင်ဆင်မှု ၅ ===
+                  // "Edit" လုပ်တဲ့အခါ Dropdown က "positionId" (ID) ကို သုံးရပါမယ်။
+                  <select 
+                    value={editedData.positionId || ''} 
+                    onChange={(e) => setEditedData({...editedData, positionId: e.target.value})} 
+                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  >
                     <option value="">Select Position</option>
-                    {jobPositions.map(p => <option key={p.englishName} value={p.englishName}>{p.englishName}</option>)}
+                    {/* Dropdown ရဲ့ "value" က "p.id" (ID) ဖြစ်ရပါမယ်။
+                      User ကို ပြမယ့် စာသားက "p.englishName" (နာမည်) ဖြစ်ရပါမယ်။
+                    */}
+                    {jobPositions.map(p => <option key={p.id} value={p.id}>{p.englishName}</option>)}
                   </select>
                 ) : (
-                  worker.position
+                  // === ပြင်ဆင်မှု ၆ ===
+                  // ဇယားထဲမှာ "worker.position" (နာမည်အဟောင်း) အစား၊
+                  // "worker.positionId" (ID) ကို သုံးပြီး "နာမည်" ကို ရှာပြရပါမယ်။
+                  getPositionName(worker.positionId)
                 )}
               </td>
               {isOwner && (
@@ -105,23 +139,34 @@ const WorkersTable: React.FC<WorkersTableProps> = ({ data, jobPositions, onAdd, 
       </table>
       {isOwner && (
         <form onSubmit={handleAdd} className="mt-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-            <h3 className="col-span-full text-md font-semibold">{t('addNewWorker')}</h3>
-            <div>
-                <label className="block text-sm font-medium">{t('workerId')}</label>
-                <input type="text" value={newId} onChange={e => setNewId(e.target.value)} required className="mt-1 w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" />
-            </div>
-            <div>
-                <label className="block text-sm font-medium">{t('workerName')}</label>
-                <input type="text" value={newName} onChange={e => setNewName(e.target.value)} required className="mt-1 w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" />
-            </div>
-            <div>
-                <label className="block text-sm font-medium">{t('position')}</label>
-                <select value={newPosition} onChange={e => setNewPosition(e.target.value)} required className="mt-1 w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                    <option value="">Select Position</option>
-                    {jobPositions.map(p => <option key={p.englishName} value={p.englishName}>{p.englishName}</option>)}
-                </select>
-            </div>
-            <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-semibold h-fit">{t('submit')}</button>
+          <h3 className="col-span-full text-md font-semibold">{t('addNewWorker')}</h3>
+          <div>
+            <label className="block text-sm font-medium">{t('workerId')}</label>
+            <input type="text" value={newId} onChange={e => setNewId(e.target.value)} required className="mt-1 w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium">{t('workerName')}</label>
+            <input type="text" value={newName} onChange={e => setNewName(e.target.value)} required className="mt-1 w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium">{t('position')}</label>
+            {/* === ပြင်ဆင်မှု ၇ ===
+                "Add New" Dropdown က "newPositionId" (ID) ကို သုံးရပါမယ်။
+            */}
+            <select 
+              value={newPositionId} 
+              onChange={e => setNewPositionId(e.target.value)} 
+              required 
+              className="mt-1 w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            >
+              <option value="">Select Position</option>
+              {/* Dropdown ရဲ့ "value" က "p.id" (ID) ဖြစ်ရပါမယ်။
+                User ကို ပြမယ့် စာသားက "p.englishName" (နာမည်) ဖြစ်ရပါမယ်။
+              */}
+              {jobPositions.map(p => <option key={p.id} value={p.id}>{p.englishName}</option>)}
+            </select>
+          </div>
+          <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-semibold h-fit">{t('submit')}</button>
         </form>
       )}
     </div>

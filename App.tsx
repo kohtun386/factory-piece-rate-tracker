@@ -19,8 +19,11 @@ import './index.css';
 
 type View = 'dashboard' | 'data' | 'master' | 'audit' | 'workerLogs';
 
-// Helper to add an 'id' to a JobPosition for Firestore compatibility
-const jobPositionToDoc = (position: JobPosition) => ({ ...position, id: position.englishName });
+// === ပြင်ဆင်မှု ၁ ===
+// "englishName" ကို "id" အဖြစ် သုံးနေတဲ့ "Database Design" အမှားကို ဖယ်ရှားလိုက်ပါပြီ။
+// firebase.ts ထဲက "addDocument" function က "id" field ကို အလိုအလျောက် ခွဲထုတ်ပေးပြီးသားမို့၊
+// ဒီ helper function လုံးဝ မလိုအပ်တော့ပါဘူး။
+// const jobPositionToDoc = (position: JobPosition) => ({ ...position, id: position.englishName });
 
 const AppContent: React.FC = () => {
     const { isAuthenticated, role } = useAuth();
@@ -165,31 +168,44 @@ const AppContent: React.FC = () => {
         }
     };
 
+    // === ပြင်ဆင်မှု ၂ ===
+    // "jobPositionToDoc" helper အမှားကို ဖယ်ရှားပြီး၊ "addDocument" function ကို တိုက်ရိုက် ခေါ်သုံးပါ။
+    // "JobPositionsTable" (ပြင်ဆင်ပြီး) file က "id" ပါတဲ့ "position" object အသစ်ကို ပို့ပေးပါလိမ့်မယ်။
     const handleAddJobPosition = async (position: JobPosition) => {
         try {
-            await addDocument('jobPositions', jobPositionToDoc(position));
+            // "firebase.ts" ထဲက "addDocument" က "id" field ကို ခွဲထုတ်ပြီး data ကို သိမ်းပေးပါလိမ့်မယ်။
+            await addDocument('jobPositions', position);
             setJobPositions(prev => [...prev, position]);
-            logAuditEvent('CREATE', 'JOB_POSITION', `Added job position '${position.englishName}'`);
+            logAuditEvent('CREATE', 'JOB_POSITION', `Added job position '${position.englishName}' (ID: ${position.id})`);
         } catch (error) {
             console.error("Failed to add job position:", error);
         }
     };
 
+    // === ပြင်ဆင်မှု ၃ ===
+    // "jobPositionToDoc" helper အမှားကို ဖယ်ရှားပါ။
+    // "id" ကို အသုံးပြုပြီး state ကို update လုပ်ပါ။
     const handleUpdateJobPosition = async (updatedPosition: JobPosition) => {
         try {
-            await updateDocument('jobPositions', jobPositionToDoc(updatedPosition));
-            setJobPositions(prev => prev.map(p => p.englishName === updatedPosition.englishName ? updatedPosition : p));
-            logAuditEvent('UPDATE', 'JOB_POSITION', `Updated job position '${updatedPosition.englishName}'`);
+            await updateDocument('jobPositions', updatedPosition);
+            setJobPositions(prev => prev.map(p => p.id === updatedPosition.id ? updatedPosition : p));
+            logAuditEvent('UPDATE', 'JOB_POSITION', `Updated job position '${updatedPosition.englishName}' (ID: ${updatedPosition.id})`);
         } catch (error) {
             console.error("Failed to update job position:", error);
         }
     };
 
-    const handleDeleteJobPosition = async (englishName: string) => {
+    // === ပြင်ဆင်မှု ၄ ===
+    // "englishName" (နာမည်) အစား "positionId" (အိုင်ဒီ) ကို လက်ခံပါ။
+    // "id" ကို အသုံးပြုပြီး delete လုပ်ပြီး state ကို update လုပ်ပါ။
+    const handleDeleteJobPosition = async (positionId: string) => {
         try {
-            await deleteDocument('jobPositions', englishName);
-            setJobPositions(prev => prev.filter(p => p.englishName !== englishName));
-            logAuditEvent('DELETE', 'JOB_POSITION', `Deleted job position '${englishName}'`);
+            // Log မမှတ်ခင် နာမည်ကို အရင်ရှာထားပါ။
+            const positionName = jobPositions.find(p => p.id === positionId)?.englishName || 'N/A';
+            
+            await deleteDocument('jobPositions', positionId); // "id" ကို သုံးပြီး ဖျက်ပါ။
+            setJobPositions(prev => prev.filter(p => p.id !== positionId)); // "id" ကို သုံးပြီး filter လုပ်ပါ။
+            logAuditEvent('DELETE', 'JOB_POSITION', `Deleted job position '${positionName}' (ID: ${positionId})`);
         } catch (error) {
             console.error("Failed to delete job position:", error);
         }
