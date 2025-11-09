@@ -17,14 +17,12 @@ const WorkersTable: React.FC<WorkersTableProps> = ({ data, jobPositions, onAdd, 
   
   const [editingId, setEditingId] = useState<string | null>(null);
   
-  // === ပြင်ဆင်မှု ၁ ===
   // "editedData" က "types.ts" (Blueprint) အသစ်နဲ့ ကိုက်ညီနေရပါမယ်။
   const [editedData, setEditedData] = useState<Partial<Worker>>({});
 
   const [newId, setNewId] = useState('');
   const [newName, setNewName] = useState('');
   
-  // === ပြင်ဆင်မှု ၂ ===
   // "newPosition" (နာမည်) အစား "newPositionId" (ID) ကို မှတ်သားပါမယ်။
   const [newPositionId, setNewPositionId] = useState('');
 
@@ -49,7 +47,6 @@ const WorkersTable: React.FC<WorkersTableProps> = ({ data, jobPositions, onAdd, 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // === ပြင်ဆင်မှု ၃ ===
     // "newPosition" (နာမည်) အစား "newPositionId" (ID) ကို check လုပ်ပါ။
     if (newId && newName && newPositionId) {
       
@@ -65,7 +62,6 @@ const WorkersTable: React.FC<WorkersTableProps> = ({ data, jobPositions, onAdd, 
   
   const isOwner = role === 'owner';
 
-  // === ပြင်ဆင်မှု ၄ ===
   // ဇယား (Table) ထဲမှာ "ID" ("jp_001") ကို "နာမည်" ("Loom Operator") ပြောင်းပြီး ပြသဖို့ Function
   const getPositionName = (positionId: string) => {
     // "jobPositions" array ထဲက "positionId" နဲ့ တူတဲ့ "id" ကို ရှာပါ။
@@ -98,7 +94,6 @@ const WorkersTable: React.FC<WorkersTableProps> = ({ data, jobPositions, onAdd, 
               </td>
               <td className="px-6 py-4">
                 {editingId === worker.id ? (
-                  // === ပြင်ဆင်မှု ၅ ===
                   // "Edit" လုပ်တဲ့အခါ Dropdown က "positionId" (ID) ကို သုံးရပါမယ်။
                   <select 
                     value={editedData.positionId || ''} 
@@ -112,9 +107,7 @@ const WorkersTable: React.FC<WorkersTableProps> = ({ data, jobPositions, onAdd, 
                     {jobPositions.map(p => <option key={p.id} value={p.id}>{p.englishName}</option>)}
                   </select>
                 ) : (
-                  // === ပြင်ဆင်မှု ၆ ===
-                  // ဇယားထဲမှာ "worker.position" (နာမည်အဟောင်း) အစား၊
-                  // "worker.positionId" (ID) ကို သုံးပြီး "နာမည်" ကို ရှာပြရပါမယ်။
+                  // ဇယားထဲမှာ "worker.positionId" (ID) ကို သုံးပြီး "နာမည်" ကို ရှာပြရပါမယ်။
                   getPositionName(worker.positionId)
                 )}
               </td>
@@ -150,9 +143,7 @@ const WorkersTable: React.FC<WorkersTableProps> = ({ data, jobPositions, onAdd, 
           </div>
           <div>
             <label className="block text-sm font-medium">{t('position')}</label>
-            {/* === ပြင်ဆင်မှု ၇ ===
-                "Add New" Dropdown က "newPositionId" (ID) ကို သုံးရပါမယ်။
-            */}
+            {/* "Add New" Dropdown က "newPositionId" (ID) ကို သုံးရပါမယ်။ */}
             <select 
               value={newPositionId} 
               onChange={e => setNewPositionId(e.target.value)} 

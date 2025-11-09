@@ -10,10 +10,8 @@ interface JobPositionsTableProps {
   onDelete: (positionId: string) => void;
 }
 
-// === "Smart Workflow" အသစ် ===
-// Language Context ကနေ "language" (ဥပမာ 'en' or 'my') ကို ယူသုံးပါမယ်။
-// (မှတ်ချက်- "useLanguage" hook က "language" state ကို ပေးတယ်လို့ ယူဆထားပါတယ်)
 const JobPositionsTable: React.FC<JobPositionsTableProps> = ({ data, onAdd, onUpdate, onDelete }) => {
+  // "language" state ကို "useLanguage" hook ကနေ ယူသုံးပါမယ်။
   const { t, language } = useLanguage(); 
   const { role } = useAuth();
 
@@ -50,7 +48,7 @@ const JobPositionsTable: React.FC<JobPositionsTableProps> = ({ data, onAdd, onUp
       // === "Smart Workflow" Logic ===
       // English mode မှာ ဖြည့်ခဲ့ရင်...
       if (language === 'en') {
-        if (!newEnglishName) return; // 'required' က check ပေမဲ့၊ ထပ်စစ်တာပါ။
+        if (!newEnglishName) return; 
         // "မြန်မာ" field ကို "English" နာမည်နဲ့ Auto-fill လုပ်ပါ။
         positionToAdd = { 
           id: newId, 
@@ -85,8 +83,6 @@ const JobPositionsTable: React.FC<JobPositionsTableProps> = ({ data, onAdd, onUp
       <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
         <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
           <tr>
-            {/* === "Smart Workflow" UI === */}
-            {/* ဘာသာစကား (၂) ခုလုံးရဲ့ column တွေကို ပြပါ။ */}
             <th scope="col" className="px-6 py-3">{t('englishPosition')}</th>
             <th scope="col" className="px-6 py-3">{t('myanmarPosition')}</th>
             <th scope="col" className="px-6 py-3">{t('notes')}</th>
@@ -148,7 +144,7 @@ const JobPositionsTable: React.FC<JobPositionsTableProps> = ({ data, onAdd, onUp
           {/* === "Smart Workflow" Form UI === */}
           {/* English mode မှာ English အကွက် (၁) ခုတည်း ပြပါ။ */}
           {language === 'en' && (
-            <div>
+            <div className="md:col-span-2">
               <label className="block text-sm font-medium">{t('englishPosition')}</label>
               <input type="text" value={newEnglishName} onChange={e => setNewEnglishName(e.target.value)} required className="mt-1 w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" />
             </div>
@@ -156,13 +152,12 @@ const JobPositionsTable: React.FC<JobPositionsTableProps> = ({ data, onAdd, onUp
           
           {/* မြန်မာ mode မှာ မြန်မာ အကွက် (၁) ခုတည်း ပြပါ။ */}
           {language === 'my' && (
-            <div>
-              <label className="block text-sm font-Viu-Myanmar">{t('myanmarPosition')}</label>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium">{t('myanmarPosition')}</label>
               <input type="text" value={newMyanmarName} onChange={e => setNewMyanmarName(e.target.value)} required className="mt-1 w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" />
             </div>
           )}
           
-          {/* Notes (မှတ်စု) အကွက်ကိုတော့ အမြဲတမ်း ပြပါ။ */}
           <div className="col-span-full">
             <label className="block text-sm font-medium">{t('notes')}</label>
             <textarea value={newNotes} onChange={e => setNewNotes(e.target.value)} rows={3} className="mt-1 w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" />

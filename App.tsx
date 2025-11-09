@@ -19,10 +19,7 @@ import './index.css';
 
 type View = 'dashboard' | 'data' | 'master' | 'audit' | 'workerLogs';
 
-// === ပြင်ဆင်မှု ၁ ===
 // "englishName" ကို "id" အဖြစ် သုံးနေတဲ့ "Database Design" အမှားကို ဖယ်ရှားလိုက်ပါပြီ။
-// firebase.ts ထဲက "addDocument" function က "id" field ကို အလိုအလျောက် ခွဲထုတ်ပေးပြီးသားမို့၊
-// ဒီ helper function လုံးဝ မလိုအပ်တော့ပါဘူး။
 // const jobPositionToDoc = (position: JobPosition) => ({ ...position, id: position.englishName });
 
 const AppContent: React.FC = () => {
@@ -106,6 +103,9 @@ const AppContent: React.FC = () => {
         }
     };
 
+    // "Worker" functions (handleAdd, handleUpdate, handleDelete)
+    // "types.ts" (Blueprint) အသစ် ("positionId") ကို အသုံးပြုရန်
+    // `WorkersTable.tsx` file အသစ်က "worker" object အမှန်ကို ပို့ပေးပါလိမ့်မယ်။
     const handleAddWorker = async (worker: Worker) => {
         try {
             const newWorker = await addDocument<Worker>('workers', worker);
@@ -137,6 +137,7 @@ const AppContent: React.FC = () => {
         }
     };
 
+    // "RateCard" functions (OK)
     const handleAddRateCardEntry = async (task: RateCardEntry) => {
         try {
             const newTask = await addDocument<RateCardEntry>('rateCard', task);
@@ -168,9 +169,9 @@ const AppContent: React.FC = () => {
         }
     };
 
-    // === ပြင်ဆင်မှု ၂ ===
-    // "jobPositionToDoc" helper အမှားကို ဖယ်ရှားပြီး၊ "addDocument" function ကို တိုက်ရိုက် ခေါ်သုံးပါ။
-    // "JobPositionsTable" (ပြင်ဆင်ပြီး) file က "id" ပါတဲ့ "position" object အသစ်ကို ပို့ပေးပါလိမ့်မယ်။
+    // === "JobPosition" Functions (Database ID Fix) ===
+    
+    // "JobPositionsTable.tsx" (ပြင်ဆင်ပြီး) file က "id" ပါတဲ့ "position" object အသစ်ကို ပို့ပေးပါလိမ့်မယ်။
     const handleAddJobPosition = async (position: JobPosition) => {
         try {
             // "firebase.ts" ထဲက "addDocument" က "id" field ကို ခွဲထုတ်ပြီး data ကို သိမ်းပေးပါလိမ့်မယ်။
@@ -182,8 +183,6 @@ const AppContent: React.FC = () => {
         }
     };
 
-    // === ပြင်ဆင်မှု ၃ ===
-    // "jobPositionToDoc" helper အမှားကို ဖယ်ရှားပါ။
     // "id" ကို အသုံးပြုပြီး state ကို update လုပ်ပါ။
     const handleUpdateJobPosition = async (updatedPosition: JobPosition) => {
         try {
@@ -195,9 +194,7 @@ const AppContent: React.FC = () => {
         }
     };
 
-    // === ပြင်ဆင်မှု ၄ ===
     // "englishName" (နာမည်) အစား "positionId" (အိုင်ဒီ) ကို လက်ခံပါ။
-    // "id" ကို အသုံးပြုပြီး delete လုပ်ပြီး state ကို update လုပ်ပါ။
     const handleDeleteJobPosition = async (positionId: string) => {
         try {
             // Log မမှတ်ခင် နာမည်ကို အရင်ရှာထားပါ။
@@ -210,6 +207,8 @@ const AppContent: React.FC = () => {
             console.error("Failed to delete job position:", error);
         }
     };
+    // === End of JobPosition Functions ===
+
 
     const handleAddPaymentLog = async (payment: PaymentLog) => {
         try {
