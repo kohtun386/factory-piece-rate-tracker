@@ -89,6 +89,7 @@ const JobPositionsTable: React.FC<JobPositionsTableProps> = ({ data, onAdd, onUp
       <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
         <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
           <tr>
+            {/* === "Smart Workflow" ဇယား (Table) ပြင်ဆင်မှု ၁ === */}
             {/* English mode မှာ English column (၁) ခုတည်း ပြပါ။ */}
             {language === 'en' && <th scope="col" className="px-6 py-3">{t('englishPosition')}</th>}
             {/* မြန်မာ mode မှာ မြန်မာ column (၁) ခုတည်း ပြပါ။ */}
@@ -102,7 +103,7 @@ const JobPositionsTable: React.FC<JobPositionsTableProps> = ({ data, onAdd, onUp
           {data.map((position) => (
             <tr key={position.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
               
-              {/* === "Smart Workflow" ဇယား (Table) ပြင်ဆင်မှု === */}
+              {/* === "Smart Workflow" ဇယား (Table) ပြင်ဆင်မှု ၂ === */}
               {/* English mode မှာ English data (၁) ခုတည်း ပြ/ပြင် ပါ။ */}
               {language === 'en' && (
                 <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
@@ -162,6 +163,7 @@ const JobPositionsTable: React.FC<JobPositionsTableProps> = ({ data, onAdd, onUp
         </tbody>
       </table>
       {isOwner && (
+        // "Add New" Form က "Smart Workflow" အတိုင်း (၁) ကွက်တည်း ပြတာ မှန်ကန်ပြီးသား ဖြစ်ပါတယ်။
         <form onSubmit={handleAdd} className="mt-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg grid grid-cols-1 md:grid-cols-2 gap-4">
           <h3 className="col-span-full text-md font-semibold">{t('addNewJobPosition')}</h3>
           
