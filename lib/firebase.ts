@@ -203,6 +203,7 @@ const MOCK_FIRESTORE_DB: Record<string, MockClient> = {
         clientName: "Thiri Swe Textile Factory",
         subscriptionStatus: "TRIAL",
         ownerPassword: "123",
+        ownerEmail: "owner@client001.com",
         trialEndDate: {
           seconds: 1777488000, // Approx. May 1, 2026
           nanoseconds: 0,
@@ -245,6 +246,7 @@ const MOCK_FIRESTORE_DB: Record<string, MockClient> = {
         clientName: "Paid Customer Inc.",
         subscriptionStatus: "PAID",
         ownerPassword: "123",
+        ownerEmail: "owner@client002.com",
     },
     collections: { jobPositions: [], workers: [], rateCard: [], productionEntries: [], paymentLogs: [], auditLog: [] }
   },
@@ -264,24 +266,45 @@ const MOCK_FIRESTORE_DB: Record<string, MockClient> = {
 
 // --- Data Fetching ---
 
-export const getClientData = async (clientId: string): Promise<ClientData | null> => {
-  const normalizedClientId = clientId.toLowerCase().trim();
+export const getClientData = async (emailOrClientId: string): Promise<ClientData | null> => {
+  const normalizedInput = emailOrClientId.toLowerCase().trim();
   currentClientId = null; // Reset current client on new login attempt
   
   if (db) {
-    console.log(`Fetching from REAL Firestore for client: ${normalizedClientId}`);
+    console.log(`Fetching from REAL Firestore for: ${normalizedInput}`);
     try {
-      const docRef = doc(db, 'clients', normalizedClientId);
-      const docSnap = await getDoc(docRef);
+      // For email-based lookup, search in clients collection for ownerEmail field
+      // For clientId lookup (backward compatibility), use clientId as doc path
       
-      if (docSnap.exists()) {
-        const data = docSnap.data() as any;
-        console.log("Found client data in Firestore:", data);
-        currentClientId = normalizedClientId; // Set the current client ID on successful login
-        return data as ClientData;
-      } else {
-        console.log("Client data not found in Firestore.");
+      if (normalizedInput.includes('@')) {
+        // Email-based lookup - query clients collection for matching ownerEmail
+        const clientsRef = collection(db, 'clients');
+        const snapshot = await getDocs(clientsRef);
+        
+        for (const docSnap of snapshot.docs) {
+          const data = docSnap.data() as any;
+          if (data.ownerEmail && data.ownerEmail.toLowerCase() === normalizedInput) {
+            console.log("Found client data in Firestore by email:", data);
+            currentClientId = docSnap.id; // Use the Firestore doc ID as clientId
+            return data as ClientData;
+          }
+        }
+        console.log("Client with this email not found in Firestore.");
         return null;
+      } else {
+        // Backward compatibility: clientId lookup
+        const docRef = doc(db, 'clients', normalizedInput);
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+          const data = docSnap.data() as any;
+          console.log("Found client data in Firestore by ID:", data);
+          currentClientId = normalizedInput;
+          return data as ClientData;
+        } else {
+          console.log("Client data not found in Firestore.");
+          return null;
+        }
       }
     } catch (error: any) {
       console.error("Error fetching from Firestore:", error);
@@ -292,16 +315,32 @@ export const getClientData = async (clientId: string): Promise<ClientData | null
     }
   } 
   else {
-    console.log(`Simulating Firestore fetch for client: ${normalizedClientId}`);
+    console.log(`Simulating Firestore fetch for: ${normalizedInput}`);
     await new Promise(resolve => setTimeout(resolve, 500));
-    const client = MOCK_FIRESTORE_DB[normalizedClientId];
-    if (client) {
-      console.log("Found mock data:", client.clientData);
-      currentClientId = normalizedClientId; // Set current client ID for mock data access
-      return client.clientData;
-    } else {
-      console.log("Client data not found in mock DB.");
+    
+    // Mock data lookup
+    if (normalizedInput.includes('@')) {
+      // Email-based lookup in mock data
+      for (const [clientId, client] of Object.entries(MOCK_FIRESTORE_DB)) {
+        if (client.clientData.ownerEmail === normalizedInput) {
+          console.log("Found mock data by email:", client.clientData);
+          currentClientId = clientId;
+          return client.clientData;
+        }
+      }
+      console.log("Client with this email not found in mock DB.");
       return null;
+    } else {
+      // ClientId lookup in mock data (backward compatibility)
+      const client = MOCK_FIRESTORE_DB[normalizedInput];
+      if (client) {
+        console.log("Found mock data by ID:", client.clientData);
+        currentClientId = normalizedInput;
+        return client.clientData;
+      } else {
+        console.log("Client data not found in mock DB.");
+        return null;
+      }
     }
   }
 };

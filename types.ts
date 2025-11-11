@@ -72,7 +72,8 @@ export interface ClientData {
   clientName: string;
   subscriptionStatus: 'TRIAL' | 'PAID';
   trialEndDate?: FirebaseTimestamp;
-  ownerPassword?: string; // Optional field for role security
+  ownerPassword?: string; // Optional field for backward compatibility
+  ownerEmail?: string; // Email of the account owner (used for Firebase Auth)
 }
 
 export interface FirebaseConfig {
