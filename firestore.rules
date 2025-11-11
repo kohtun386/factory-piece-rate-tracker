@@ -1,0 +1,78 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ========================================
+    // HELPER FUNCTIONS
+    // ========================================
+    
+    // Check if user is authenticated
+    function isAuth() {
+      return request.auth != null;
+    }
+    
+    // Check if user is the owner of a client
+    function isClientOwner(clientId) {
+      return isAuth() && 
+             get(/databases/$(database)/documents/clients/$(clientId)).data.ownerUid == request.auth.uid;
+    }
+    
+    // Check if user is the owner of a worker's client
+    function isWorkerOwner(clientId) {
+      return isAuth() && 
+             get(/databases/$(database)/documents/clients/$(clientId)).data.ownerUid == request.auth.uid;
+    }
+    
+    // ========================================
+    // CLIENTS COLLECTION
+    // ========================================
+    // Users can only read/write their own client document
+    // Document ID = clientId, stores ownerUid, clientName, subscriptionStatus, etc.
+    
+    match /clients/{clientId} {
+      // Read: Only the owner can read their client data
+      allow read: if isClientOwner(clientId);
+      
+      // Write (Create/Update): 
+      // - Create: Only authenticated users can create (ownerUid must match)
+      // - Update: Only owner can update their data
+      allow create: if isAuth() && 
+                       request.resource.data.ownerUid == request.auth.uid;
+      
+      allow update: if isClientOwner(clientId) && 
+                       (request.resource.data.ownerUid == resource.data.ownerUid);  // Owner UID cannot change
+      
+      // Delete: Not allowed (prevent accidental deletion)
+      allow delete: if false;
+      
+      // ========================================
+      // SUBCOLLECTIONS (Workers, ProductionEntries, etc.)
+      // ========================================
+      // All subcollections can only be accessed by the client owner
+      
+      match /{subcollection=**} {
+        allow read, write: if isClientOwner(clientId);
+      }
+    }
+    
+    // ========================================
+    // AUDIT LOG COLLECTION (Shared across clients)
+    // ========================================
+    // Users can only read audit logs for their own client
+    // Audit entries should be written from backend (Cloud Functions)
+    
+    match /auditLog/{auditId} {
+      allow read: if isAuth() && 
+                     isClientOwner(resource.data.clientId);
+      
+      // Backend only (via Cloud Functions with admin SDK)
+      allow write: if false;
+    }
+    
+    // Deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
