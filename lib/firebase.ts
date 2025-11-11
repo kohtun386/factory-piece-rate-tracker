@@ -284,6 +284,11 @@ export const getClientData = async (emailOrClientId: string): Promise<ClientData
         for (const docSnap of snapshot.docs) {
           const data = docSnap.data() as any;
           if (data.ownerEmail && data.ownerEmail.toLowerCase() === normalizedInput) {
+            // SECURITY: Verify currentUser's UID matches ownerUid in document
+            if (currentUser && data.ownerUid && data.ownerUid !== currentUser.uid) {
+              console.warn("UID mismatch: Client exists but belongs to different user");
+              return null; // Silently fail - prevent disclosure of other users' clients
+            }
             console.log("Found client data in Firestore by email:", data);
             currentClientId = docSnap.id; // Use the Firestore doc ID as clientId
             return data as ClientData;
@@ -298,6 +303,13 @@ export const getClientData = async (emailOrClientId: string): Promise<ClientData
         
         if (docSnap.exists()) {
           const data = docSnap.data() as any;
+          
+          // SECURITY: Verify currentUser's UID matches ownerUid in document
+          if (currentUser && data.ownerUid && data.ownerUid !== currentUser.uid) {
+            console.warn("UID mismatch: Client exists but belongs to different user");
+            throw new Error('PERMISSION_DENIED');
+          }
+          
           console.log("Found client data in Firestore by ID:", data);
           currentClientId = normalizedInput;
           return data as ClientData;
@@ -308,7 +320,7 @@ export const getClientData = async (emailOrClientId: string): Promise<ClientData
       }
     } catch (error: any) {
       console.error("Error fetching from Firestore:", error);
-      if (error.code === 'permission-denied') {
+      if (error.code === 'permission-denied' || error.message === 'PERMISSION_DENIED') {
           throw new Error('PERMISSION_DENIED');
       }
       return null;
