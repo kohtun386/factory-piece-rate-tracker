@@ -10,9 +10,10 @@ interface WorkersTableProps {
   onAdd: (worker: Worker) => void;
   onUpdate: (worker: Worker) => void;
   onDelete: (workerId: string) => void;
+  isLoading?: boolean;
 }
 
-const WorkersTable: React.FC<WorkersTableProps> = ({ data, jobPositions, onAdd, onUpdate, onDelete }) => {
+const WorkersTable: React.FC<WorkersTableProps> = ({ data, jobPositions, onAdd, onUpdate, onDelete, isLoading = false }) => {
   const { t } = useLanguage();
   const { role } = useAuth();
   
@@ -73,7 +74,16 @@ const WorkersTable: React.FC<WorkersTableProps> = ({ data, jobPositions, onAdd, 
   };
 
   return (
-    <div className="overflow-x-auto">
+    <div className="relative">
+      {isLoading && (
+        <div className="absolute inset-0 bg-white/50 dark:bg-gray-800/50 flex items-center justify-center z-10 rounded-lg">
+          <div className="flex flex-col items-center gap-2">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Processing...</p>
+          </div>
+        </div>
+      )}
+      <div className="overflow-x-auto">
       <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
         <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
           <tr>
@@ -177,6 +187,7 @@ const WorkersTable: React.FC<WorkersTableProps> = ({ data, jobPositions, onAdd, 
           <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-semibold h-fit">{t('submit')}</button>
         </form>
       )}
+      </div>
     </div>
   );
 };

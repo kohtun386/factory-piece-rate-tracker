@@ -29,6 +29,7 @@ const AppContent: React.FC = () => {
     const { t } = useLanguage();
     const { addToast } = useToast();
     const [isLoadingData, setIsLoadingData] = useState(true);
+    const [loadingOperation, setLoadingOperation] = useState<string | null>(null);
     const [entries, setEntries] = useState<ProductionEntry[]>([]);
     const [workers, setWorkers] = useState<Worker[]>([]);
     const [rateCard, setRateCard] = useState<RateCardEntry[]>([]);
@@ -113,6 +114,7 @@ const AppContent: React.FC = () => {
     // `WorkersTable.tsx` file အသစ်က "worker" object အမှန်ကို ပို့ပေးပါလိမ့်မယ်။
     const handleAddWorker = async (worker: Worker) => {
         try {
+            setLoadingOperation('addWorker');
             const newWorker = await addDocument<Worker>('workers', worker);
             setWorkers(prev => [...prev, newWorker]);
             addToast(`✓ Worker ${worker.name} added`, 'success');
@@ -120,11 +122,14 @@ const AppContent: React.FC = () => {
         } catch (error) {
             console.error("Failed to add worker:", error);
             addToast('Failed to add worker', 'error');
+        } finally {
+            setLoadingOperation(null);
         }
     };
 
     const handleUpdateWorker = async (updatedWorker: Worker) => {
         try {
+            setLoadingOperation('updateWorker');
             await updateDocument<Worker>('workers', updatedWorker);
             setWorkers(prev => prev.map(w => w.id === updatedWorker.id ? updatedWorker : w));
             addToast(`✓ Worker ${updatedWorker.name} updated`, 'success');
@@ -132,11 +137,14 @@ const AppContent: React.FC = () => {
         } catch (error) {
             console.error("Failed to update worker:", error);
             addToast('Failed to update worker', 'error');
+        } finally {
+            setLoadingOperation(null);
         }
     };
 
     const handleDeleteWorker = async (workerId: string) => {
         try {
+            setLoadingOperation('deleteWorker');
             const workerName = workers.find(w => w.id === workerId)?.name || 'N/A';
             await deleteDocument('workers', workerId);
             setWorkers(prev => prev.filter(w => w.id !== workerId));
@@ -145,6 +153,8 @@ const AppContent: React.FC = () => {
         } catch (error) {
             console.error("Failed to delete worker:", error);
             addToast('Failed to delete worker', 'error');
+        } finally {
+            setLoadingOperation(null);
         }
     };
 
@@ -321,6 +331,7 @@ const AppContent: React.FC = () => {
                                             onUpdate={handleUpdateWorker}
                                             onDelete={handleDeleteWorker}
                                             jobPositions={jobPositions}
+                                            isLoading={loadingOperation === 'addWorker' || loadingOperation === 'updateWorker' || loadingOperation === 'deleteWorker'}
                                         />
                                     </div>
                                     <div className="bg-white dark:bg-gray-800 shadow-2xl rounded-xl p-6 md:p-8">
