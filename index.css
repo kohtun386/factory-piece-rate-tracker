@@ -2,3 +2,26 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@layer utilities {
+  .animate-slideIn {
+    animation: slideIn 0.3s ease-out;
+  }
+}
+
+@media print {
+  .noprint {
+    display: none !important;
+  }
+}

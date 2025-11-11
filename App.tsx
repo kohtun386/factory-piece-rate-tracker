@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ToastProvider, useToast } from './contexts/ToastContext';
 import Header from './components/Header';
+import ToastContainer from './components/ToastContainer';
 import Dashboard from './components/Dashboard';
 import ProductionForm from './components/ProductionForm';
 import ProductionData from './components/ProductionData';
@@ -25,6 +27,7 @@ type View = 'dashboard' | 'data' | 'master' | 'audit' | 'workerLogs';
 const AppContent: React.FC = () => {
     const { isAuthenticated, role } = useAuth();
     const { t } = useLanguage();
+    const { addToast } = useToast();
     const [isLoadingData, setIsLoadingData] = useState(true);
     const [entries, setEntries] = useState<ProductionEntry[]>([]);
     const [workers, setWorkers] = useState<Worker[]>([]);
@@ -97,9 +100,11 @@ const AppContent: React.FC = () => {
         try {
             const newEntry = await addDocument<ProductionEntry>('productionEntries', entry);
             setEntries(prev => [newEntry, ...prev]);
+            addToast(`✓ Production entry logged for ${entry.workerName}`, 'success');
             logAuditEvent('CREATE', 'PRODUCTION_ENTRY', `Logged entry for ${entry.workerName} on task '${entry.taskName}'`);
         } catch (error) {
             console.error("Failed to add production entry:", error);
+            addToast('Failed to save production entry', 'error');
         }
     };
 
@@ -110,9 +115,11 @@ const AppContent: React.FC = () => {
         try {
             const newWorker = await addDocument<Worker>('workers', worker);
             setWorkers(prev => [...prev, newWorker]);
+            addToast(`✓ Worker ${worker.name} added`, 'success');
             logAuditEvent('CREATE', 'WORKER', `Added worker ${worker.id}: ${worker.name}`);
         } catch (error) {
             console.error("Failed to add worker:", error);
+            addToast('Failed to add worker', 'error');
         }
     };
 
@@ -120,9 +127,11 @@ const AppContent: React.FC = () => {
         try {
             await updateDocument<Worker>('workers', updatedWorker);
             setWorkers(prev => prev.map(w => w.id === updatedWorker.id ? updatedWorker : w));
+            addToast(`✓ Worker ${updatedWorker.name} updated`, 'success');
             logAuditEvent('UPDATE', 'WORKER', `Updated worker ${updatedWorker.id}: ${updatedWorker.name}`);
         } catch (error) {
             console.error("Failed to update worker:", error);
+            addToast('Failed to update worker', 'error');
         }
     };
 
@@ -131,9 +140,11 @@ const AppContent: React.FC = () => {
             const workerName = workers.find(w => w.id === workerId)?.name || 'N/A';
             await deleteDocument('workers', workerId);
             setWorkers(prev => prev.filter(w => w.id !== workerId));
+            addToast(`✓ Worker ${workerName} deleted`, 'success');
             logAuditEvent('DELETE', 'WORKER', `Deleted worker ${workerId}: ${workerName}`);
         } catch (error) {
             console.error("Failed to delete worker:", error);
+            addToast('Failed to delete worker', 'error');
         }
     };
 
@@ -344,7 +355,10 @@ function App() {
   return (
     <LanguageProvider>
       <AuthProvider>
-        <AppContent />
+        <ToastProvider>
+          <AppContent />
+          <ToastContainer />
+        </ToastProvider>
       </AuthProvider>
     </LanguageProvider>
   );

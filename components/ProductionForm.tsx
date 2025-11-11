@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ProductionEntry, Worker, RateCardEntry, Shift } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useToast } from '../contexts/ToastContext';
 import AddTaskModal from './AddTaskModal';
 
 interface ProductionFormProps {
@@ -12,6 +13,7 @@ interface ProductionFormProps {
 
 const ProductionForm: React.FC<ProductionFormProps> = ({ workers, rateCard, onAddEntry, onAddTask }) => {
   const { t } = useLanguage();
+  const { addToast } = useToast();
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [shift, setShift] = useState<Shift>('Day');
   const [workerName, setWorkerName] = useState('');
@@ -23,10 +25,19 @@ const ProductionForm: React.FC<ProductionFormProps> = ({ workers, rateCard, onAd
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const selectedTask = rateCard.find(t => t.taskName === taskName);
-    if (!selectedTask || !workerName) return;
+    if (!selectedTask || !workerName) {
+      addToast('Please select a worker and task', 'warning');
+      return;
+    }
 
     const completedQty = parseInt(completedQuantity) || 0;
     const defectQty = parseInt(defectQuantity) || 0;
+    
+    if (completedQty < 0 || defectQty < 0) {
+      addToast('Quantities must be positive numbers', 'warning');
+      return;
+    }
+
     const pieceRate = selectedTask.rate;
     const basePay = completedQty * pieceRate;
     const deductionAmount = defectQty * pieceRate;

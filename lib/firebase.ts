@@ -103,15 +103,15 @@ const MOCK_FIRESTORE_DB: Record<string, MockClient> = {
     },
     collections: {
         jobPositions: [
-            { englishName: 'Loom Operator', myanmarName: 'စက်ယက္ကန်းသမား', notes: 'Operates weaving looms.' },
-            { englishName: 'Seamstress', myanmarName: 'ချုပ်စပ်သူ', notes: 'Stitches garments.' },
-            { englishName: 'Quality Control', myanmarName: 'အရည်အသွေးစစ်', notes: 'Inspects final products.' },
+            { id: 'JP001', englishName: 'Loom Operator', myanmarName: 'စက်ယက္ကန်းသမား', notes: 'Operates weaving looms.' },
+            { id: 'JP002', englishName: 'Seamstress', myanmarName: 'ချုပ်စပ်သူ', notes: 'Stitches garments.' },
+            { id: 'JP003', englishName: 'Quality Control', myanmarName: 'အရည်အသွေးစစ်', notes: 'Inspects final products.' },
         ],
         workers: [
-            { id: 'W001', name: 'Aung Aung', position: 'Loom Operator' },
-            { id: 'W002', name: 'Ma Aye', position: 'Seamstress' },
-            { id: 'W003', name: 'Ko Mya', position: 'Loom Operator' },
-            { id: 'W004', name: 'Su Su', position: 'Quality Control' },
+            { id: 'W001', name: 'Aung Aung', positionId: 'JP001' },
+            { id: 'W002', name: 'Ma Aye', positionId: 'JP002' },
+            { id: 'W003', name: 'Ko Mya', positionId: 'JP001' },
+            { id: 'W004', name: 'Su Su', positionId: 'JP003' },
         ],
         rateCard: [
             { id: 'T01', taskName: 'Weaving - Pattern A', unit: 'meter', rate: 150 },
