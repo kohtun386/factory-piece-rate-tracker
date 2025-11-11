@@ -13,11 +13,22 @@ import {
     deleteDoc, 
     Firestore 
 } from "firebase/firestore";
+import {
+    getAuth,
+    signInWithEmailAndPassword,
+    signOut as firebaseSignOut,
+    onAuthStateChanged,
+    Auth,
+    User,
+    createUserWithEmailAndPassword,
+} from "firebase/auth";
 import { ClientData, FirebaseConfig, Worker, RateCardEntry, JobPosition, ProductionEntry, PaymentLog, AuditEntry } from '../types';
 
 const FIREBASE_CONFIG_KEY = 'firebaseConfig';
 let db: Firestore | null = null;
+let auth: Auth | null = null;
 let currentClientId: string | null = null;
+let currentUser: User | null = null;
 
 // --- Configuration Management ---
 
@@ -69,6 +80,103 @@ export const initializeFirebase = (config: FirebaseConfig): boolean => {
     console.error("Firebase initialization failed:", error);
     db = null;
     return false;
+  }
+};
+
+// --- Firebase Authentication ---
+
+export const initializeAuth = (config: FirebaseConfig): void => {
+  try {
+    let app: FirebaseApp;
+    if (getApps().length === 0) {
+      app = initializeApp(config);
+    } else {
+      app = getApp();
+    }
+    auth = getAuth(app);
+    console.log("Firebase Auth initialized successfully.");
+  } catch (error) {
+    console.error("Firebase Auth initialization failed:", error);
+    auth = null;
+  }
+};
+
+export const loginWithEmail = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+  if (!auth) {
+    return { success: false, error: 'Firebase Auth not initialized' };
+  }
+  
+  try {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    currentUser = userCredential.user;
+    console.log("User logged in:", currentUser.uid);
+    return { success: true };
+  } catch (error: any) {
+    console.error("Login failed:", error);
+    let errorMessage = 'Login failed';
+    
+    if (error.code === 'auth/user-not-found') {
+      errorMessage = 'User not found';
+    } else if (error.code === 'auth/wrong-password') {
+      errorMessage = 'Wrong password';
+    } else if (error.code === 'auth/invalid-email') {
+      errorMessage = 'Invalid email format';
+    } else if (error.code === 'auth/too-many-requests') {
+      errorMessage = 'Too many login attempts. Try again later.';
+    }
+    
+    return { success: false, error: errorMessage };
+  }
+};
+
+export const logoutUser = async (): Promise<void> => {
+  if (!auth) return;
+  
+  try {
+    await firebaseSignOut(auth);
+    currentUser = null;
+    currentClientId = null;
+    console.log("User logged out");
+  } catch (error) {
+    console.error("Logout failed:", error);
+  }
+};
+
+export const getCurrentUser = (): User | null => {
+  return currentUser;
+};
+
+export const onAuthChange = (callback: (user: User | null) => void): (() => void) | null => {
+  if (!auth) return null;
+  
+  return onAuthStateChanged(auth, (user) => {
+    currentUser = user;
+    callback(user);
+  });
+};
+
+export const registerUserWithEmail = async (email: string, password: string): Promise<{ success: boolean; uid?: string; error?: string }> => {
+  if (!auth) {
+    return { success: false, error: 'Firebase Auth not initialized' };
+  }
+  
+  try {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    console.log("User registered:", userCredential.user.uid);
+    return { success: true, uid: userCredential.user.uid };
+  } catch (error: any) {
+    console.error("Registration failed:", error);
+    let errorMessage = 'Registration failed';
+    
+    if (error.code === 'auth/email-already-in-use') {
+      errorMessage = 'Email already in use';
+    } else if (error.code === 'auth/weak-password') {
+      errorMessage = 'Password too weak (min 6 characters)';
+    } else if (error.code === 'auth/invalid-email') {
+      errorMessage = 'Invalid email format';
+    }
+    
+    return { success: false, error: errorMessage };
   }
 };
 

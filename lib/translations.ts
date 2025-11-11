@@ -114,6 +114,11 @@ export const translations = {
     password: 'Password',
     confirm: 'Confirm',
     incorrectPassword: 'Password is incorrect. Please try again.',
+    emailLabel: 'Email Address',
+    passwordLabel: 'Password',
+    invalidCredentials: 'Invalid email or password. Please try again.',
+    loginFailed: 'Login failed. Please try again.',
+    demoAccountsHint: 'For testing, use these demo accounts:',
   },
   my: {
     date: 'ရက်စွဲ',
@@ -230,5 +235,10 @@ export const translations = {
     password: 'စကားဝှက်',
     confirm: 'အတည်ပြုသည်',
     incorrectPassword: 'စကားဝှက် မှားနေပါသည်။ ထပ်မံကြိုးစားပါ။',
+    emailLabel: 'အီလျံ အစည်းအဋ္ဌ',
+    passwordLabel: 'စကားဝှက်',
+    invalidCredentials: 'အီလျံ သို့မဟုတ် စကားဝှက် မှားနေပါသည်။ ထပ်မံကြိုးစားပါ။',
+    loginFailed: 'လော့ဂ်အင်ဝင်မှု မအောင်မြင်ပါ။ ထပ်မံကြိုးစားပါ။',
+    demoAccountsHint: 'စမ်းသပ်ရန်အတွက် ဤဒေမို အကောင့်များကိုသုံးပါ:',
   },
 };
