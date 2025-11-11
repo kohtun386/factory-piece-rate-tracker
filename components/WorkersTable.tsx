@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Worker, JobPosition } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
+import ConfirmDialog from './ConfirmDialog';
 
 interface WorkersTableProps {
   data: Worker[];
@@ -16,6 +17,7 @@ const WorkersTable: React.FC<WorkersTableProps> = ({ data, jobPositions, onAdd, 
   const { role } = useAuth();
   
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
   
   // "editedData" က "types.ts" (Blueprint) အသစ်နဲ့ ကိုက်ညီနေရပါမယ်။
   const [editedData, setEditedData] = useState<Partial<Worker>>({});
@@ -121,7 +123,7 @@ const WorkersTable: React.FC<WorkersTableProps> = ({ data, jobPositions, onAdd, 
                   ) : (
                     <>
                       <button onClick={() => handleEdit(worker)} className="px-3 py-1 text-sm font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700">{t('edit')}</button>
-                      <button onClick={() => onDelete(worker.id)} className="px-3 py-1 text-sm font-semibold text-white bg-red-600 rounded-md hover:bg-red-700">{t('delete')}</button>
+                      <button onClick={() => setDeleteConfirm({ id: worker.id, name: worker.name })} className="px-3 py-1 text-sm font-semibold text-white bg-red-600 rounded-md hover:bg-red-700">{t('delete')}</button>
                     </>
                   )}
                 </td>
@@ -130,6 +132,21 @@ const WorkersTable: React.FC<WorkersTableProps> = ({ data, jobPositions, onAdd, 
           ))}
         </tbody>
       </table>
+      <ConfirmDialog
+        isOpen={!!deleteConfirm}
+        title={t('delete')}
+        message={`Are you sure you want to delete worker "${deleteConfirm?.name}"? This action cannot be undone.`}
+        confirmText={t('delete')}
+        cancelText={t('cancel')}
+        isDangerous
+        onConfirm={() => {
+          if (deleteConfirm) {
+            onDelete(deleteConfirm.id);
+            setDeleteConfirm(null);
+          }
+        }}
+        onCancel={() => setDeleteConfirm(null)}
+      />
       {isOwner && (
         <form onSubmit={handleAdd} className="mt-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
           <h3 className="col-span-full text-md font-semibold">{t('addNewWorker')}</h3>
