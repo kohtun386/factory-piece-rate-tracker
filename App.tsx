@@ -14,7 +14,8 @@ import AuditLogView from './components/AuditLogView';
 import LoginScreen from './components/LoginScreen';
 import SubscriptionGate from './components/SubscriptionGate';
 import WorkerLogsPage from './components/WorkerLogsPage';
-import { RateCardEntry, Worker, JobPosition, AuditEntry, AuditAction, AuditTarget } from './types';
+import PrintableLog from './components/PrintableLog';
+import { RateCardEntry, Worker, JobPosition, AuditEntry, AuditAction, AuditTarget, ProductionEntry } from './types';
 import { getCollection, addDocument, updateDocument, deleteDocument } from './lib/firebase';
 import './index.css';
 
@@ -37,10 +38,29 @@ const AppContent: React.FC = () => {
     const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
     const [view, setView] = useState<View>(role === 'owner' ? 'dashboard' : 'data');
     const [refreshCounter, setRefreshCounter] = useState(0);
+    const [allEntriesForPrint, setAllEntriesForPrint] = useState<ProductionEntry[]>([]);
+    const [isPrintingAll, setIsPrintingAll] = useState(false);
 
     const triggerRefresh = useCallback(() => {
         setRefreshCounter(c => c + 1);
     }, []);
+
+    const handlePrintAll = useCallback(async () => {
+        setIsPrintingAll(true);
+        try {
+            // Fetch all production entries (not paginated)
+            const allEntries = await getCollection<ProductionEntry>('productionEntries');
+            setAllEntriesForPrint(allEntries);
+            // Schedule print after state update
+            setTimeout(() => {
+                window.print();
+            }, 100);
+        } catch (error) {
+            console.error("Failed to fetch entries for printing:", error);
+            addToast("Failed to load entries for printing", "error");
+            setIsPrintingAll(false);
+        }
+    }, [addToast]);
 
     const logAuditEvent = useCallback(async (action: AuditAction, target: AuditTarget, details: string) => {
         const newLogEntry: AuditEntry = {
@@ -90,6 +110,17 @@ const AppContent: React.FC = () => {
         }
     }, [isAuthenticated]);
 
+    // Handle clearing print data after print completes
+    useEffect(() => {
+        const handleAfterPrint = () => {
+            setAllEntriesForPrint([]);
+            setIsPrintingAll(false);
+        };
+        window.addEventListener('afterprint', handleAfterPrint);
+        return () => {
+            window.removeEventListener('afterprint', handleAfterPrint);
+        };
+    }, []);
 
 useEffect(() => {
       // 🚨 BUG FIX: 'dashboard' component က pagination ကြောင့် ပျက်နေပါတယ်။
@@ -261,10 +292,14 @@ useEffect(() => {
                                     <div className="flex justify-between items-center mb-4 noprint">
                                         <h2 className="text-2xl font-bold text-gray-800 dark:text-white">{t('productionLog')}</h2>
                                         <div className="flex items-center gap-2">
-                                            <button onClick={() => window.print()} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-semibold text-sm">{t('printReport')}</button>
+                                            <button onClick={handlePrintAll} disabled={isPrintingAll} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed font-semibold text-sm">{isPrintingAll ? t('loggingIn') || 'Loading...' : t('printReport')}</button>
                                         </div>
                                     </div>
                                     <ProductionData refreshCounter={refreshCounter} />
+                                    {/* Hidden area for printing all entries */}
+                                    <div className="hidden printable-area">
+                                        <PrintableLog entries={allEntriesForPrint} />
+                                    </div>
                                 </div>
                             )}
 
