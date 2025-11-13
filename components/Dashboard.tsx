@@ -215,15 +215,13 @@ const Dashboard: React.FC<DashboardProps> = (/* { entries } */) => {
                     </div>
                 ) : (
                     <div className="h-64 flex items-center justify-center text-gray-500 dark:text-gray-400">{t('noDefectsRecorded')}</div>
-                )}
-            </div>
-        </div>
-      </div>
-      <div className="hidden printable-area">
-         <PrintableReport data={payrollData} startDate={startDate} endDate={endDate} />
-      </div>
-    </div>
-  );
-};
-
-export default Dashboard;
+                )}
+            </div>
+        </div>
+      </div>
+      <div className="printable-area">
+         <PrintableReport data={payrollData} startDate={startDate} endDate={endDate} />
+      </div>
+    </div>
+  );
+};export default Dashboard;

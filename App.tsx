@@ -297,7 +297,7 @@ useEffect(() => {
                                     </div>
                                     <ProductionData refreshCounter={refreshCounter} />
                                     {/* Hidden area for printing all entries */}
-                                    <div className="hidden printable-area">
+                                    <div className="printable-area">
                                         <PrintableLog entries={allEntriesForPrint} />
                                     </div>
                                 </div>
