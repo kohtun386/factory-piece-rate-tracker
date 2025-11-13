@@ -5,16 +5,18 @@ import WorkerSearch from './WorkerSearch';
 import WorkerProfile from './WorkerProfile';
 import { getPaginatedCollection, addDocument } from '../lib/firebase';
 import { useToast } from '../contexts/ToastContext';
+import { useMasterData } from '../contexts/MasterDataContext';
 
 const ITEMS_PER_PAGE = 50;
 
 interface WorkerLogsPageProps {
-  workers: Worker[];
+  // workers prop is no longer needed - fetched from MasterDataContext
 }
 
-const WorkerLogsPage: React.FC<WorkerLogsPageProps> = ({ workers }) => {
+const WorkerLogsPage: React.FC<WorkerLogsPageProps> = () => {
   const { t } = useLanguage();
   const { addToast } = useToast();
+  const { workers } = useMasterData();
   const [selectedWorkerId, setSelectedWorkerId] = useState<string | null>(null);
   const [productionEntries, setProductionEntries] = useState<ProductionEntry[]>([]);
   const [payments, setPayments] = useState<PaymentLog[]>([]);
