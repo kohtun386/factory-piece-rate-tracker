@@ -10,7 +10,14 @@ import {
     getDocs, 
     setDoc, 
     updateDoc, 
-    deleteDoc, 
+    deleteDoc,
+    query,
+    limit,
+    orderBy,
+    startAfter,
+    Query,
+    QueryConstraint,
+    DocumentSnapshot,
     Firestore 
 } from "firebase/firestore";
 import {
@@ -202,7 +209,7 @@ const MOCK_FIRESTORE_DB: Record<string, MockClient> = {
     clientData: {
         clientName: "Thiri Swe Textile Factory",
         subscriptionStatus: "TRIAL",
-        ownerPassword: "123",
+        ownerPassword: "Factory123456",
         ownerEmail: "owner@client001.com",
         trialEndDate: {
           seconds: 1777488000, // Approx. May 1, 2026
@@ -245,7 +252,7 @@ const MOCK_FIRESTORE_DB: Record<string, MockClient> = {
     clientData: {
         clientName: "Paid Customer Inc.",
         subscriptionStatus: "PAID",
-        ownerPassword: "123",
+        ownerPassword: "123456",
         ownerEmail: "owner@client002.com",
     },
     collections: { jobPositions: [], workers: [], rateCard: [], productionEntries: [], paymentLogs: [], auditLog: [] }
@@ -389,6 +396,88 @@ export const getCollection = async <T>(collectionName: string): Promise<T[]> => 
     }
     return [];
 };
+
+  /**
+   * Fetches paginated documents from a subcollection, sorted by a field in descending order.
+   * @param collectionName - Name of the subcollection (e.g., 'productionEntries', 'paymentLogs')
+   * @param pageSize - Number of documents to fetch per page (default: 50)
+   * @param sortField - Field to sort by (e.g., 'date', 'timestamp')
+   * @param startAfterDoc - Document cursor from previous page (for pagination)
+   * @returns {items: T[], lastVisible: DocumentSnapshot} - Items and cursor for next page
+   */
+  export const getPaginatedCollection = async <T extends { id: string }>(
+    collectionName: string,
+    pageSize: number = 50,
+    sortField: string = 'date',
+    startAfterDoc?: DocumentSnapshot
+  ): Promise<{ items: T[]; lastVisible: DocumentSnapshot | null }> => {
+    if (!currentClientId) {
+      console.warn(`No client logged in. Cannot fetch ${collectionName}.`);
+      return { items: [], lastVisible: null };
+    }
+
+    if (db) {
+      try {
+        const collectionRef = collection(db, 'clients', currentClientId, collectionName);
+            
+        // Build query constraints
+        const constraints: QueryConstraint[] = [
+          orderBy(sortField, 'desc'),
+          limit(pageSize + 1)
+        ];
+            
+        // Add startAfter constraint if provided (for pagination)
+        if (startAfterDoc) {
+          constraints.unshift(startAfter(startAfterDoc));
+        }
+            
+        const q = query(collectionRef, ...constraints);
+        const snapshot = await getDocs(q);
+            
+        const items = snapshot.docs
+          .slice(0, pageSize)
+          .map((doc: any) => ({ id: doc.id, ...doc.data() } as T));
+            
+        // Determine if there are more documents
+        const lastVisible = snapshot.docs.length > pageSize ? snapshot.docs[pageSize - 1] : null;
+            
+        return { items, lastVisible };
+      } catch (error) {
+        console.error(`Error fetching paginated collection ${collectionName}:`, error);
+        return { items: [], lastVisible: null };
+      }
+    }
+
+    // Fallback to Mock Data - simple pagination
+    const clientMockData = MOCK_FIRESTORE_DB[currentClientId];
+    if (clientMockData && clientMockData.collections[collectionName as keyof MockCollections]) {
+      let mockCollection = [...clientMockData.collections[collectionName as keyof MockCollections]] as unknown as T[];
+        
+      // Sort by field (descending)
+      mockCollection = mockCollection.sort((a: any, b: any) => {
+        const aVal = a[sortField];
+        const bVal = b[sortField];
+        if (typeof aVal === 'string') {
+          return bVal.localeCompare(aVal);
+        }
+        return bVal - aVal;
+      });
+        
+      // Simple cursor-based pagination for mock data
+      let startIndex = 0;
+      if (startAfterDoc) {
+        startIndex = (startAfterDoc as any)._index || 0;
+      }
+        
+      const items = mockCollection.slice(startIndex, startIndex + pageSize);
+      const hasMore = startIndex + pageSize < mockCollection.length;
+      const lastVisible = hasMore ? ({ _index: startIndex + pageSize } as any) : null;
+        
+      return { items, lastVisible };
+    }
+
+    return { items: [], lastVisible: null };
+  };
 
 /**
  * Adds a new document to a subcollection.

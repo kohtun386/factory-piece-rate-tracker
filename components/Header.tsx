@@ -6,8 +6,8 @@ import { UserRole } from '../types';
 import OwnerPasswordModal from './OwnerPasswordModal';
 
 const Header: React.FC = () => {
-  const { t } = useLanguage();
-  const { clientData, logout, role, setRole, verifyOwnerPassword } = useAuth();
+const { t } = useLanguage();
+  const { clientData, logout, role, setRole } = useAuth(); // verifyOwnerPassword ကို ဖျက်လိုက်ပါ
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleRoleChange = (newRole: UserRole) => {
@@ -22,15 +22,19 @@ const Header: React.FC = () => {
     }
   };
 
-  const handlePasswordSubmit = (password: string): boolean => {
-    if (verifyOwnerPassword(password)) {
-      setRole('owner');
-      setIsModalOpen(false);
-      return true;
-    }
-    return false;
-  };
-
+// Header.tsx - handlePasswordSubmit (အသစ်)
+  const handlePasswordSubmit = (password: string): boolean => {
+    // 🚨 BUG FIX: clientData ထဲက password နဲ့ တိုက်ရိုက် စစ်ပါ
+    // ဒါက Demo Mode အတွက် အလုပ်လုပ်ပါလိမ့်မယ်
+    if (clientData && password === clientData.ownerPassword) {
+      setRole('owner');      // Role ကို "Owner" ပြောင်းပါ
+      setIsModalOpen(false); // Modal ကို ပိတ်ပါ
+      return true;
+    }
+    
+    // Password မှားခဲ့ရင် false ပြန်ပေးပါ
+    return false;
+  };
   const roleButtonClasses = (buttonRole: UserRole) =>
     `px-3 py-1 text-sm font-medium rounded-md transition-colors duration-200 ${
       role === buttonRole

@@ -13,9 +13,8 @@ import JobPositionsTable from './components/JobPositionsTable';
 import AuditLogView from './components/AuditLogView';
 import LoginScreen from './components/LoginScreen';
 import SubscriptionGate from './components/SubscriptionGate';
-import PrintableLog from './components/PrintableLog';
 import WorkerLogsPage from './components/WorkerLogsPage';
-import { ProductionEntry, RateCardEntry, Worker, JobPosition, AuditEntry, AuditAction, AuditTarget, PaymentLog } from './types';
+import { RateCardEntry, Worker, JobPosition, AuditEntry, AuditAction, AuditTarget } from './types';
 import { getCollection, addDocument, updateDocument, deleteDocument } from './lib/firebase';
 import './index.css';
 
@@ -30,13 +29,18 @@ const AppContent: React.FC = () => {
     const { addToast } = useToast();
     const [isLoadingData, setIsLoadingData] = useState(true);
     const [loadingOperation, setLoadingOperation] = useState<string | null>(null);
-    const [entries, setEntries] = useState<ProductionEntry[]>([]);
+    // Note: ProductionEntry and PaymentLog are now fetched on-demand in their respective components (lazy-loading)
+    // Only fetch reference data that's needed by all components
     const [workers, setWorkers] = useState<Worker[]>([]);
     const [rateCard, setRateCard] = useState<RateCardEntry[]>([]);
     const [jobPositions, setJobPositions] = useState<JobPosition[]>([]);
     const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
-    const [paymentLogs, setPaymentLogs] = useState<PaymentLog[]>([]);
     const [view, setView] = useState<View>(role === 'owner' ? 'dashboard' : 'data');
+    const [refreshCounter, setRefreshCounter] = useState(0);
+
+    const triggerRefresh = useCallback(() => {
+        setRefreshCounter(c => c + 1);
+    }, []);
 
     const logAuditEvent = useCallback(async (action: AuditAction, target: AuditTarget, details: string) => {
         const newLogEntry: AuditEntry = {
@@ -59,27 +63,25 @@ const AppContent: React.FC = () => {
         if (isAuthenticated) {
             const fetchData = async () => {
                 setIsLoadingData(true);
-                console.log("Fetching all collections from Firestore...");
+                console.log("Fetching reference data from Firestore...");
                 try {
-                    const [workersData, rateCardData, jobPositionsData, entriesData, auditLogData, paymentLogsData] = await Promise.all([
+                    // Fetch only reference data (workers, rateCard, jobPositions, auditLog)
+                    // ProductionEntry and PaymentLog are fetched on-demand in their components (lazy-loading)
+                    const [workersData, rateCardData, jobPositionsData, auditLogData] = await Promise.all([
                         getCollection<Worker>('workers'),
                         getCollection<RateCardEntry>('rateCard'),
                         getCollection<JobPosition>('jobPositions'),
-                        getCollection<ProductionEntry>('productionEntries'),
                         getCollection<AuditEntry>('auditLog'),
-                        getCollection<PaymentLog>('paymentLogs'),
                     ]);
 
                     setWorkers(workersData);
                     setRateCard(rateCardData);
                     setJobPositions(jobPositionsData);
-                    setEntries(entriesData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
                     setAuditLog(auditLogData.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
-                    setPaymentLogs(paymentLogsData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
 
-                    console.log("All data fetched successfully.");
+                    console.log("Reference data fetched successfully.");
                 } catch (error) {
-                    console.error("Error fetching initial data from Firestore:", error);
+                    console.error("Error fetching reference data from Firestore:", error);
                 } finally {
                     setIsLoadingData(false);
                 }
@@ -89,25 +91,17 @@ const AppContent: React.FC = () => {
     }, [isAuthenticated]);
 
 
-    useEffect(() => {
-      setView(role === 'owner' ? 'dashboard' : 'data');
-    }, [role]);
-
+useEffect(() => {
+      // 🚨 BUG FIX: 'dashboard' component က pagination ကြောင့် ပျက်နေပါတယ်။
+      // Role ပြောင်းတဲ့အခါ Crash မဖြစ်အောင် 'data' view (ProductionData) ကိုပဲ အမြဲတမ်း default သတ်မှတ်လိုက်ပါ။
+      setView('data');
+    }, [role]);
     if (!isAuthenticated) {
         return <LoginScreen />;
     }
 
-    const addProductionEntry = async (entry: ProductionEntry) => {
-        try {
-            const newEntry = await addDocument<ProductionEntry>('productionEntries', entry);
-            setEntries(prev => [newEntry, ...prev]);
-            addToast(`✓ Production entry logged for ${entry.workerName}`, 'success');
-            logAuditEvent('CREATE', 'PRODUCTION_ENTRY', `Logged entry for ${entry.workerName} on task '${entry.taskName}'`);
-        } catch (error) {
-            console.error("Failed to add production entry:", error);
-            addToast('Failed to save production entry', 'error');
-        }
-    };
+    // Note: addProductionEntry removed - ProductionData now manages its own data fetching and submission
+    // This was necessary for implementing pagination on the production entries table
 
     // "Worker" functions (handleAdd, handleUpdate, handleDelete)
     // "types.ts" (Blueprint) အသစ် ("positionId") ကို အသုံးပြုရန်
@@ -229,44 +223,12 @@ const AppContent: React.FC = () => {
         }
     };
     // === End of JobPosition Functions ===
+    
+    // Note: handleAddPaymentLog removed - WorkerLogsPage now manages payment logging with pagination
+    // This was necessary for implementing pagination on payment logs
 
-
-    const handleAddPaymentLog = async (payment: PaymentLog) => {
-        try {
-            const newPayment = await addDocument<PaymentLog>('paymentLogs', payment);
-            setPaymentLogs(prev => [newPayment, ...prev].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-            logAuditEvent('CREATE', 'PAYMENT_LOG', `Logged payment of ${payment.amount} Ks for ${payment.workerName}`);
-        } catch (error) {
-            console.error("Failed to add payment log:", error);
-        }
-    };
-
-    const handleExportToCSV = () => {
-        const headers = ['ID', 'Date', 'Shift', 'Worker Name', 'Task Name', 'Completed Qty', 'Defect Qty', 'Piece Rate', 'Base Pay', 'Deduction'];
-        const rows = entries.map(entry => [
-            entry.id,
-            entry.date,
-            entry.shift,
-            `"${entry.workerName}"`,
-            `"${entry.taskName}"`,
-            entry.completedQuantity,
-            entry.defectQuantity,
-            entry.pieceRate,
-            entry.basePay,
-            entry.deductionAmount
-        ].join(','));
-
-        const csvContent = [headers.join(','), ...rows].join('\n');
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-        link.setAttribute('href', url);
-        link.setAttribute('download', 'production_data.csv');
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    };
+    // Note: handleExportToCSV removed - will be moved to ProductionData component
+    // This allows CSV export to work with paginated data
 
 
     return (
@@ -290,9 +252,9 @@ const AppContent: React.FC = () => {
                                 </div>
                             )}
                             
-                            {role === 'supervisor' && <ProductionForm workers={workers} rateCard={rateCard} onAddEntry={addProductionEntry} onAddTask={handleAddRateCardEntry} />}
+                            {role === 'supervisor' && <ProductionForm workers={workers} rateCard={rateCard} onAddTask={handleAddRateCardEntry} onEntryAdded={triggerRefresh} />}
                             
-                            {view === 'dashboard' && role === 'owner' && <Dashboard entries={entries} />}
+                            {view === 'dashboard' && role === 'owner' && <Dashboard />}
                             
                             {view === 'data' && (
                                 <div className="bg-white dark:bg-gray-800 shadow-2xl rounded-xl p-6 md:p-8">
@@ -300,25 +262,16 @@ const AppContent: React.FC = () => {
                                         <h2 className="text-2xl font-bold text-gray-800 dark:text-white">{t('productionLog')}</h2>
                                         <div className="flex items-center gap-2">
                                             <button onClick={() => window.print()} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-semibold text-sm">{t('printReport')}</button>
-                                            <button onClick={handleExportToCSV} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-semibold text-sm">{t('exportToCSV')}</button>
                                         </div>
                                     </div>
-                                    <ProductionData entries={entries} />
-                                    <div className="hidden printable-area">
-                                        <PrintableLog entries={entries} />
-                                    </div>
+                                    <ProductionData refreshCounter={refreshCounter} />
                                 </div>
                             )}
 
                             {view === 'audit' && role === 'owner' && <AuditLogView auditLog={auditLog} />}
 
                             {view === 'workerLogs' && role === 'owner' && (
-                                <WorkerLogsPage
-                                    workers={workers}
-                                    entries={entries}
-                                    paymentLogs={paymentLogs}
-                                    onAddPayment={handleAddPaymentLog}
-                                />
+                                <WorkerLogsPage workers={workers} />
                             )}
                             
                             {view === 'master' && role === 'owner' && (

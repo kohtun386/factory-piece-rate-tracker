@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 
+
 interface OwnerPasswordModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -9,6 +10,7 @@ interface OwnerPasswordModalProps {
 
 const OwnerPasswordModal: React.FC<OwnerPasswordModalProps> = ({ isOpen, onClose, onSubmit }) => {
   const { t } = useLanguage();
+  
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const passwordInputRef = useRef<HTMLInputElement>(null);
@@ -22,21 +24,23 @@ const OwnerPasswordModal: React.FC<OwnerPasswordModalProps> = ({ isOpen, onClose
     }
   }, [isOpen]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    const success = onSubmit(password);
-    if (!success) {
-      setError(t('incorrectPassword'));
-      // Shake animation on error
-      const modal = e.currentTarget.closest('.modal-content');
-      modal?.classList.add('animate-shake');
-      setTimeout(() => modal?.classList.remove('animate-shake'), 500);
-    } else {
-      setPassword(''); // Clear password on success
-    }
-  };
-
+// Ownerpasswordmodal.tsx - handleSubmit (အသစ်)
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    const success = onSubmit(password); // Password ကို Header ဆီ ပို့စစ်ပါ
+    
+    if (!success) {
+      setError(t('incorrectPassword'));
+      // Shake animation on error
+      const modal = e.currentTarget.closest('.modal-content');
+      modal?.classList.add('animate-shake');
+      setTimeout(() => modal?.classList.remove('animate-shake'), 500);
+    } else {
+      // 🚨 BUG FIX: အောင်မြင်သွားရင် Modal ကို ပိတ်ခိုင်းပါ
+      handleClose(); 
+    }
+  };
   const handleClose = () => {
     setPassword('');
     setError('');

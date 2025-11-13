@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { initializeFirebase, saveFirebaseConfig, loadFirebaseConfig, clearFirebaseConfig } from '../lib/firebase';
+import { initializeFirebase, saveFirebaseConfig, loadFirebaseConfig, clearFirebaseConfig, registerUserWithEmail, initializeAuth } from '../lib/firebase';
 import { FirebaseConfig } from '../types';
 import { defaultConfig } from '../lib/firebaseConfig';
 
@@ -17,24 +17,30 @@ const LoginScreen: React.FC = () => {
   const [configStatus, setConfigStatus] = useState('');
   const [isUsingFirebase, setIsUsingFirebase] = useState(false);
 
-  useEffect(() => {
-    const useDemo = localStorage.getItem('useDemoData') === 'true';
+// --- useEffect (Code အမှန်) ---
 
-    if (useDemo) {
-        setIsUsingFirebase(false);
-        return;
-    }
+  useEffect(() => {
+    const useDemo = localStorage.getItem('useDemoData') === 'true';
 
-    const loadedConfig = loadFirebaseConfig();
-    const initialConfig = loadedConfig || defaultConfig;
+    if (useDemo) {
+        setIsUsingFirebase(false);
+        return;
+    }
 
-    if (initialConfig) {
-      setConfig(initialConfig);
-      if (initializeFirebase(initialConfig)) {
-        setIsUsingFirebase(true);
-      }
-    }
-  }, []);
+    const loadedConfig = loadFirebaseConfig();
+    const initialConfig = loadedConfig || defaultConfig;
+
+    if (initialConfig) {
+      setConfig(initialConfig);
+      if (initializeFirebase(initialConfig)) {
+      // Firebase (db) ရတာနဲ့ Auth ကိုပါ တခါတည်း စတင်ပါ
+      initializeAuth(initialConfig);
+      setIsUsingFirebase(true);
+    }
+    }
+  }, []);
+
+// --- END of useEffect ---
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,9 +64,11 @@ const LoginScreen: React.FC = () => {
   };
 
   const handleSaveConfig = () => {
-    if (config.apiKey && config.authDomain && config.projectId) {
-      if (initializeFirebase(config)) {
-        saveFirebaseConfig(config);
+    if (config.apiKey && config.authDomain && config.projectId) {
+      if (initializeFirebase(config)) {
+        // Also initialize Auth so login works immediately
+        initializeAuth(config); // require ကို ဖျက်ပြီး တိုက်ရိုက်ခေါ်ပါ
+        saveFirebaseConfig(config);
         localStorage.removeItem('useDemoData');
         // Reload to ensure the new Firebase connection is used cleanly
         window.location.reload();
@@ -80,8 +88,8 @@ const LoginScreen: React.FC = () => {
   };
 
   const demoAccounts = [
-    { email: 'owner@client001.com', password: '123' },
-    { email: 'owner@client002.com', password: '123' }
+    { email: 'owner@client001.com', password: 'Factory123456' },
+    { email: 'owner@client002.com', password: 'Factory123456' }
   ];
 
   return (
@@ -133,6 +141,29 @@ const LoginScreen: React.FC = () => {
               </div>
 
               {error && <p className="text-sm text-center text-red-500">{error}</p>}
+              {/* --- TEMPORARY REGISTER BUTTON --- */}
+<button
+  type="button" // ဒါက form submit မဖြစ်အောင် တားပေးပါတယ်
+  onClick={async () => {
+    const email = "owner@client001.com";
+    const password = "Factory123456"; // ကျွန်တော်တို့ရဲ့ password အသစ်
+
+    try {
+      const result = await registerUserWithEmail(email, password);
+      if (result.success) {
+        alert("SUCCESS: Demo user ကို ဆောက်ပြီးပါပြီ။ အခု ဝင်လို့ရပါပြီ။");
+      } else {
+        alert("ERROR: " + result.error);
+      }
+    } catch (err) {
+      alert("Critical Error: " + String(err));
+    }
+  }}
+  className="w-full py-2 px-4 mb-4 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg focus:outline-none focus:shadow-outline"
+>
+  Create Demo User (ဒီခလုတ်ကို တစ်ခါပဲ နှိပ်ပါ)
+</button>
+{/* --- END OF TEMPORARY BUTTON --- */}
 
               <div>
                 <button

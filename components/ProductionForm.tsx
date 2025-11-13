@@ -2,16 +2,17 @@ import React, { useState } from 'react';
 import { ProductionEntry, Worker, RateCardEntry, Shift } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useToast } from '../contexts/ToastContext';
+import { addDocument } from '../lib/firebase';
 import AddTaskModal from './AddTaskModal';
 
 interface ProductionFormProps {
   workers: Worker[];
   rateCard: RateCardEntry[];
-  onAddEntry: (entry: ProductionEntry) => void;
   onAddTask: (task: RateCardEntry) => void;
+  onEntryAdded?: () => void;
 }
 
-const ProductionForm: React.FC<ProductionFormProps> = ({ workers, rateCard, onAddEntry, onAddTask }) => {
+const ProductionForm: React.FC<ProductionFormProps> = ({ workers, rateCard, onAddTask, onEntryAdded }) => {
   const { t } = useLanguage();
   const { addToast } = useToast();
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -21,8 +22,9 @@ const ProductionForm: React.FC<ProductionFormProps> = ({ workers, rateCard, onAd
   const [completedQuantity, setCompletedQuantity] = useState('');
   const [defectQuantity, setDefectQuantity] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const selectedTask = rateCard.find(t => t.taskName === taskName);
     if (!selectedTask || !workerName) {
@@ -42,7 +44,7 @@ const ProductionForm: React.FC<ProductionFormProps> = ({ workers, rateCard, onAd
     const basePay = completedQty * pieceRate;
     const deductionAmount = defectQty * pieceRate;
 
-    onAddEntry({
+    const newEntry: ProductionEntry = {
       id: `E${Date.now()}`,
       date,
       shift,
@@ -53,12 +55,28 @@ const ProductionForm: React.FC<ProductionFormProps> = ({ workers, rateCard, onAd
       pieceRate,
       basePay,
       deductionAmount,
-    });
-    
-    // Reset form
-    setTaskName('');
-    setCompletedQuantity('');
-    setDefectQuantity('');
+    };
+
+    setIsSubmitting(true);
+    try {
+      await addDocument<ProductionEntry>('productionEntries', newEntry);
+      addToast(`✓ Entry logged for ${workerName}`, 'success');
+      
+      // Notify parent to refresh data
+      if (onEntryAdded) {
+        onEntryAdded();
+      }
+      
+      // Reset form
+      setTaskName('');
+      setCompletedQuantity('');
+      setDefectQuantity('');
+    } catch (error) {
+      console.error('Failed to log entry:', error);
+      addToast('Failed to log entry', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -103,7 +121,7 @@ const ProductionForm: React.FC<ProductionFormProps> = ({ workers, rateCard, onAd
                 <button type="button" onClick={() => setIsModalOpen(true)} className="text-sm text-blue-600 hover:underline dark:text-blue-400">
                     {t('addNewTask')}
                 </button>
-                <button type="submit" className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-semibold">{t('submit')}</button>
+                <button type="submit" disabled={isSubmitting} className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-400 font-semibold">{isSubmitting ? t('loggingIn') : t('submit')}</button>
             </div>
         </form>
         <AddTaskModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={(task) => { onAddTask(task); setTaskName(task.taskName); }} />
