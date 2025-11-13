@@ -1,21 +1,13 @@
 import React, { useState } from 'react';
-import { Worker, JobPosition } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useMasterData } from '../contexts/MasterDataContext';
 import ConfirmDialog from './ConfirmDialog';
 
-interface WorkersTableProps {
-  data: Worker[];
-  jobPositions: JobPosition[];
-  onAdd: (worker: Worker) => void;
-  onUpdate: (worker: Worker) => void;
-  onDelete: (workerId: string) => void;
-  isLoading?: boolean;
-}
-
-const WorkersTable: React.FC<WorkersTableProps> = ({ data, jobPositions, onAdd, onUpdate, onDelete, isLoading = false }) => {
+const WorkersTable: React.FC = () => {
   const { t } = useLanguage();
   const { role } = useAuth();
+  const { workers: data, jobPositions, handleAddWorker, handleUpdateWorker, handleDeleteWorker, loadingOperation } = useMasterData();
   
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
@@ -39,10 +31,10 @@ const WorkersTable: React.FC<WorkersTableProps> = ({ data, jobPositions, onAdd, 
     setEditedData({});
   };
 
-  const handleSave = () => {
+  const handleSaveEdit = () => {
     if (editingId && editedData) {
       // "editedData" မှာ "positionId" (ID) အသစ် ပါသွားပါပြီ။
-      onUpdate(editedData as Worker);
+      handleUpdateWorker(editedData as any);
       handleCancel();
     }
   };
@@ -53,9 +45,9 @@ const WorkersTable: React.FC<WorkersTableProps> = ({ data, jobPositions, onAdd, 
     // "newPosition" (နာမည်) အစား "newPositionId" (ID) ကို check လုပ်ပါ။
     if (newId && newName && newPositionId) {
       
-      // "onAdd" ကို ခေါ်တဲ့အခါ "Blueprint" အသစ် (`types.ts`) အတိုင်း၊
+      // "handleAddWorker" ကို ခေါ်တဲ့အခါ "Blueprint" အသစ် (`types.ts`) အတိုင်း၊
       // "positionId" (ID) ကို ထည့်သွင်း ပို့ပေးလိုက်ပါ။
-      onAdd({ id: newId, name: newName, positionId: newPositionId });
+      handleAddWorker({ id: newId, name: newName, positionId: newPositionId });
       
       setNewId('');
       setNewName('');
@@ -75,7 +67,7 @@ const WorkersTable: React.FC<WorkersTableProps> = ({ data, jobPositions, onAdd, 
 
   return (
     <div className="relative">
-      {isLoading && (
+      {loadingOperation && (
         <div className="absolute inset-0 bg-white/50 dark:bg-gray-800/50 flex items-center justify-center z-10 rounded-lg">
           <div className="flex flex-col items-center gap-2">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -127,7 +119,7 @@ const WorkersTable: React.FC<WorkersTableProps> = ({ data, jobPositions, onAdd, 
                 <td className="px-6 py-4 flex items-center space-x-2">
                   {editingId === worker.id ? (
                     <>
-                      <button onClick={handleSave} className="px-3 py-1 text-sm font-semibold text-white bg-green-600 rounded-md hover:bg-green-700">{t('save')}</button>
+                      <button onClick={handleSaveEdit} className="px-3 py-1 text-sm font-semibold text-white bg-green-600 rounded-md hover:bg-green-700">{t('save')}</button>
                       <button onClick={handleCancel} className="px-3 py-1 text-sm font-semibold text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">{t('cancel')}</button>
                     </>
                   ) : (
@@ -151,7 +143,7 @@ const WorkersTable: React.FC<WorkersTableProps> = ({ data, jobPositions, onAdd, 
         isDangerous
         onConfirm={() => {
           if (deleteConfirm) {
-            onDelete(deleteConfirm.id);
+            handleDeleteWorker(deleteConfirm.id);
             setDeleteConfirm(null);
           }
         }}

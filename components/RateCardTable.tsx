@@ -1,21 +1,15 @@
 import React, { useState } from 'react';
-import { RateCardEntry } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useMasterData } from '../contexts/MasterDataContext';
 
-interface RateCardTableProps {
-  data: RateCardEntry[];
-  onAdd: (task: RateCardEntry) => void;
-  onUpdate: (task: RateCardEntry) => void;
-  onDelete: (taskId: string) => void;
-}
-
-const RateCardTable: React.FC<RateCardTableProps> = ({ data, onAdd, onUpdate, onDelete }) => {
+const RateCardTable: React.FC = () => {
   const { t } = useLanguage();
   const { role } = useAuth();
+  const { rateCard: data, handleAddRateCardEntry, handleUpdateRateCardEntry, handleDeleteRateCardEntry } = useMasterData();
 
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editedData, setEditedData] = useState<Partial<RateCardEntry>>({});
+  const [editedData, setEditedData] = useState<Partial<any>>({});
 
   const [newId, setNewId] = useState('');
   const [newTaskName, setNewTaskName] = useState('');
@@ -26,7 +20,7 @@ const RateCardTable: React.FC<RateCardTableProps> = ({ data, onAdd, onUpdate, on
   // Form ကို "ပြမလား / ဖျောက်မလား" မှတ်သားဖို့ state အသစ်တစ်ခု ထည့်ပါ။
   const [isAddFormVisible, setIsAddFormVisible] = useState(false);
   
-  const handleEdit = (task: RateCardEntry) => {
+  const handleEdit = (task: any) => {
     setEditingId(task.id);
     setEditedData(task);
   };
@@ -36,9 +30,9 @@ const RateCardTable: React.FC<RateCardTableProps> = ({ data, onAdd, onUpdate, on
     setEditedData({});
   };
 
-  const handleSave = () => {
+  const handleSaveEdit = () => {
     if (editingId && editedData) {
-      onUpdate(editedData as RateCardEntry);
+      handleUpdateRateCardEntry(editedData as any);
       handleCancel();
     }
   };
@@ -46,7 +40,7 @@ const RateCardTable: React.FC<RateCardTableProps> = ({ data, onAdd, onUpdate, on
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
     if (newId && newTaskName && newUnit && newRate) {
-      onAdd({ id: newId, taskName: newTaskName, unit: newUnit, rate: parseFloat(newRate) });
+      handleAddRateCardEntry({ id: newId, taskName: newTaskName, unit: newUnit, rate: parseFloat(newRate) });
       setNewId('');
       setNewTaskName('');
       setNewUnit('');
@@ -117,13 +111,13 @@ const RateCardTable: React.FC<RateCardTableProps> = ({ data, onAdd, onUpdate, on
                 <td className="px-6 py-4 flex items-center space-x-2">
                   {editingId === item.id ? (
                     <>
-                      <button onClick={handleSave} className="px-3 py-1 text-sm font-semibold text-white bg-green-600 rounded-md hover:bg-green-700">{t('save')}</button>
+                      <button onClick={handleSaveEdit} className="px-3 py-1 text-sm font-semibold text-white bg-green-600 rounded-md hover:bg-green-700">{t('save')}</button>
                       <button onClick={handleCancel} className="px-3 py-1 text-sm font-semibold text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">{t('cancel')}</button>
                     </>
                   ) : (
                     <>
                       <button onClick={() => handleEdit(item)} className="px-3 py-1 text-sm font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700">{t('edit')}</button>
-                      <button onClick={() => onDelete(item.id)} className="px-3 py-1 text-sm font-semibold text-white bg-red-600 rounded-md hover:bg-red-700">{t('delete')}</button>
+                      <button onClick={() => handleDeleteRateCardEntry(item.id)} className="px-3 py-1 text-sm font-semibold text-white bg-red-600 rounded-md hover:bg-red-700">{t('delete')}</button>
                     </>
                   )}
                 </td>

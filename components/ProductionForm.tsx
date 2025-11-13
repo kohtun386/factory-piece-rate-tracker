@@ -4,17 +4,16 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useToast } from '../contexts/ToastContext';
 import { addDocument } from '../lib/firebase';
 import AddTaskModal from './AddTaskModal';
+import { useMasterData } from '../contexts/MasterDataContext';
 
 interface ProductionFormProps {
-  workers: Worker[];
-  rateCard: RateCardEntry[];
-  onAddTask: (task: RateCardEntry) => void;
   onEntryAdded?: () => void;
 }
 
-const ProductionForm: React.FC<ProductionFormProps> = ({ workers, rateCard, onAddTask, onEntryAdded }) => {
+const ProductionForm: React.FC<ProductionFormProps> = ({ onEntryAdded }) => {
   const { t } = useLanguage();
   const { addToast } = useToast();
+  const { workers, rateCard, handleAddRateCardEntry } = useMasterData();
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [shift, setShift] = useState<Shift>('Day');
   const [workerName, setWorkerName] = useState('');
@@ -26,7 +25,7 @@ const ProductionForm: React.FC<ProductionFormProps> = ({ workers, rateCard, onAd
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const selectedTask = rateCard.find(t => t.taskName === taskName);
+  const selectedTask = rateCard.find(t => t.taskName === taskName);
     if (!selectedTask || !workerName) {
       addToast('Please select a worker and task', 'warning');
       return;
@@ -124,7 +123,7 @@ const ProductionForm: React.FC<ProductionFormProps> = ({ workers, rateCard, onAd
                 <button type="submit" disabled={isSubmitting} className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-400 font-semibold">{isSubmitting ? t('loggingIn') : t('submit')}</button>
             </div>
         </form>
-        <AddTaskModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={(task) => { onAddTask(task); setTaskName(task.taskName); }} />
+        <AddTaskModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={(task) => { handleAddRateCardEntry(task); setTaskName(task.taskName); setIsModalOpen(false); }} />
     </div>
   );
 };

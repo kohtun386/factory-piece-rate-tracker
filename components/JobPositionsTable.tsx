@@ -1,27 +1,21 @@
 import React, { useState } from 'react';
-import { JobPosition } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useMasterData } from '../contexts/MasterDataContext';
 
-interface JobPositionsTableProps {
-  data: JobPosition[];
-  onAdd: (position: JobPosition) => void;
-  onUpdate: (position: JobPosition) => void;
-  onDelete: (positionId: string) => void;
-}
-
-const JobPositionsTable: React.FC<JobPositionsTableProps> = ({ data, onAdd, onUpdate, onDelete }) => {
+const JobPositionsTable: React.FC = () => {
   const { t, language } = useLanguage(); 
   const { role } = useAuth();
+  const { jobPositions: data, handleAddJobPosition, handleUpdateJobPosition, handleDeleteJobPosition } = useMasterData();
 
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editedData, setEditedData] = useState<Partial<JobPosition>>({});
+  const [editedData, setEditedData] = useState<Partial<any>>({});
   
   const [newEnglishName, setNewEnglishName] = useState('');
   const [newMyanmarName, setNewMyanmarName] = useState('');
   const [newNotes, setNewNotes] = useState('');
 
-  const handleEdit = (position: JobPosition) => {
+  const handleEdit = (position: any) => {
     setEditingId(position.id);
     setEditedData(position);
   };
@@ -31,7 +25,7 @@ const JobPositionsTable: React.FC<JobPositionsTableProps> = ({ data, onAdd, onUp
     setEditedData({});
   };
 
-  const handleSave = () => {
+  const handleSaveEdit = () => {
     if (editingId && editedData) {
       
       // === "Smart Workflow" Edit Fix ===
@@ -45,7 +39,7 @@ const JobPositionsTable: React.FC<JobPositionsTableProps> = ({ data, onAdd, onUp
         dataToUpdate.englishName = editedData.myanmarName;
       }
       
-      onUpdate(dataToUpdate as JobPosition);
+      handleUpdateJobPosition(dataToUpdate as any);
       handleCancel();
     }
   };
@@ -54,7 +48,7 @@ const JobPositionsTable: React.FC<JobPositionsTableProps> = ({ data, onAdd, onUp
       e.preventDefault();
       
       const newId = `jp_${Date.now()}`;
-      let positionToAdd: JobPosition;
+      let positionToAdd: any;
 
       if (language === 'en') {
         if (!newEnglishName) return; 
@@ -75,7 +69,7 @@ const JobPositionsTable: React.FC<JobPositionsTableProps> = ({ data, onAdd, onUp
         };
       }
       
-      onAdd(positionToAdd);
+      handleAddJobPosition(positionToAdd);
       
       setNewEnglishName('');
       setNewMyanmarName('');
@@ -147,13 +141,13 @@ const JobPositionsTable: React.FC<JobPositionsTableProps> = ({ data, onAdd, onUp
                 <td className="px-6 py-4 flex items-center space-x-2">
                     {editingId === position.id ? (
                         <>
-                            <button onClick={handleSave} className="px-3 py-1 text-sm font-semibold text-white bg-green-600 rounded-md hover:bg-green-700">{t('save')}</button>
+                            <button onClick={handleSaveEdit} className="px-3 py-1 text-sm font-semibold text-white bg-green-600 rounded-md hover:bg-green-700">{t('save')}</button>
                             <button onClick={handleCancel} className="px-3 py-1 text-sm font-semibold text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">{t('cancel')}</button>
                         </>
                     ) : (
                         <>
                             <button onClick={() => handleEdit(position)} className="px-3 py-1 text-sm font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700">{t('edit')}</button>
-                            <button onClick={() => onDelete(position.id)} className="px-3 py-1 text-sm font-semibold text-white bg-red-600 rounded-md hover:bg-red-700">{t('delete')}</button>
+                            <button onClick={() => handleDeleteJobPosition(position.id)} className="px-3 py-1 text-sm font-semibold text-white bg-red-600 rounded-md hover:bg-red-700">{t('delete')}</button>
                         </>
                     )}
                 </td>
