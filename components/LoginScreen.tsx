@@ -141,29 +141,6 @@ const LoginScreen: React.FC = () => {
               </div>
 
               {error && <p className="text-sm text-center text-red-500">{error}</p>}
-              {/* --- TEMPORARY REGISTER BUTTON --- */}
-<button
-  type="button" // ဒါက form submit မဖြစ်အောင် တားပေးပါတယ်
-  onClick={async () => {
-    const email = "owner@client001.com";
-    const password = "Factory123456"; // ကျွန်တော်တို့ရဲ့ password အသစ်
-
-    try {
-      const result = await registerUserWithEmail(email, password);
-      if (result.success) {
-        alert("SUCCESS: Demo user ကို ဆောက်ပြီးပါပြီ။ အခု ဝင်လို့ရပါပြီ။");
-      } else {
-        alert("ERROR: " + result.error);
-      }
-    } catch (err) {
-      alert("Critical Error: " + String(err));
-    }
-  }}
-  className="w-full py-2 px-4 mb-4 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg focus:outline-none focus:shadow-outline"
->
-  Create Demo User (ဒီခလုတ်ကို တစ်ခါပဲ နှိပ်ပါ)
-</button>
-{/* --- END OF TEMPORARY BUTTON --- */}
 
               <div>
                 <button

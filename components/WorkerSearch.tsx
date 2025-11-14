@@ -1,14 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Worker } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useMasterData } from '../contexts/MasterDataContext';
 
 interface WorkerSearchProps {
-  workers: Worker[];
   selectedWorkerId: string | null;
   onSelectWorker: (id: string) => void;
 }
 
-const WorkerSearch: React.FC<WorkerSearchProps> = ({ workers, selectedWorkerId, onSelectWorker }) => {
+const WorkerSearch: React.FC<WorkerSearchProps> = ({ selectedWorkerId, onSelectWorker }) => {
+  const { workers } = useMasterData();
   const { t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState('');
   const [isOpen, setIsOpen] = useState(false);

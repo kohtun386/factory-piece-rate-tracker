@@ -106,10 +106,9 @@ const AppContent: React.FC = () => {
     }, []);
 
 useEffect(() => {
-      // 🚨 BUG FIX: 'dashboard' component က pagination ကြောင့် ပျက်နေပါတယ်။
-      // Role ပြောင်းတဲ့အခါ Crash မဖြစ်အောင် 'data' view (ProductionData) ကိုပဲ အမြဲတမ်း default သတ်မှတ်လိုက်ပါ။
-      setView('data');
-    }, [role]);
+            // Restore original behavior: owner should default to dashboard, supervisors to data.
+            setView(role === 'owner' ? 'dashboard' : 'data');
+        }, [role]);
     if (!isAuthenticated) {
         return <LoginScreen />;
     }

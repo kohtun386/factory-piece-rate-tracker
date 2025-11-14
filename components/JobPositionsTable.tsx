@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useMasterData } from '../contexts/MasterDataContext';
+import JobPositionAddModal from './JobPositionAddModal';
 
 const JobPositionsTable: React.FC = () => {
   const { t, language } = useLanguage(); 
@@ -10,10 +11,7 @@ const JobPositionsTable: React.FC = () => {
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editedData, setEditedData] = useState<Partial<any>>({});
-  
-  const [newEnglishName, setNewEnglishName] = useState('');
-  const [newMyanmarName, setNewMyanmarName] = useState('');
-  const [newNotes, setNewNotes] = useState('');
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   const handleEdit = (position: any) => {
     setEditingId(position.id);
@@ -44,53 +42,29 @@ const JobPositionsTable: React.FC = () => {
     }
   };
   
-  const handleAdd = (e: React.FormEvent) => {
-      e.preventDefault();
-      
-      const newId = `jp_${Date.now()}`;
-      let positionToAdd: any;
-
-      if (language === 'en') {
-        if (!newEnglishName) return; 
-        positionToAdd = { 
-          id: newId, 
-          englishName: newEnglishName, 
-          myanmarName: newEnglishName, // Auto-fill
-          notes: newNotes 
-        };
-      } 
-      else {
-        if (!newMyanmarName) return;
-        positionToAdd = { 
-          id: newId, 
-          englishName: newMyanmarName, // Auto-fill
-          myanmarName: newMyanmarName, 
-          notes: newNotes 
-        };
-      }
-      
-      handleAddJobPosition(positionToAdd);
-      
-      setNewEnglishName('');
-      setNewMyanmarName('');
-      setNewNotes('');
-  };
+  // Add handled in JobPositionAddModal now.
 
   const isOwner = role === 'owner';
 
   return (
-    <div className="overflow-x-auto">
+    <div>
+      {isOwner && (
+        <div className="flex justify-end mb-4">
+          <button onClick={() => setIsAddModalOpen(true)} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-semibold text-sm">{t('addNewJobPosition')}</button>
+        </div>
+      )}
+      <div className="overflow-x-auto">
       <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
         <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
           <tr>
             {/* === "Smart Workflow" ဇယား (Table) ပြင်ဆင်မှု ၁ === */}
             {/* English mode မှာ English column (၁) ခုတည်း ပြပါ။ */}
-            {language === 'en' && <th scope="col" className="px-6 py-3">{t('englishPosition')}</th>}
+            {language === 'en' && <th scope="col" className="px-6 py-3 md:w-48">{t('englishPosition')}</th>}
             {/* မြန်မာ mode မှာ မြန်မာ column (၁) ခုတည်း ပြပါ။ */}
-            {language === 'my' && <th scope="col" className="px-6 py-3">{t('myanmarPosition')}</th>}
+            {language === 'my' && <th scope="col" className="px-6 py-3 md:w-48">{t('myanmarPosition')}</th>}
             
             <th scope="col" className="px-6 py-3">{t('notes')}</th>
-            {isOwner && <th scope="col" className="px-6 py-3">{t('actions')}</th>}
+            {isOwner && <th scope="col" className="px-6 py-3 md:w-40">{t('actions')}</th>}
           </tr>
         </thead>
         <tbody>
@@ -156,34 +130,8 @@ const JobPositionsTable: React.FC = () => {
           ))}
         </tbody>
       </table>
-      {isOwner && (
-        // "Add New" Form က "Smart Workflow" အတိုင်း (၁) ကွက်တည်း ပြတာ မှန်ကန်ပြီးသား ဖြစ်ပါတယ်။
-        <form onSubmit={handleAdd} className="mt-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg grid grid-cols-1 md:grid-cols-2 gap-4">
-          <h3 className="col-span-full text-md font-semibold">{t('addNewJobPosition')}</h3>
-          
-          {language === 'en' && (
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium">{t('englishPosition')}</label>
-              <input type="text" value={newEnglishName} onChange={e => setNewEnglishName(e.target.value)} required className="mt-1 w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" />
-            </div>
-          )}
-          
-          {language === 'my' && (
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium">{t('myanmarPosition')}</label>
-              <input type="text" value={newMyanmarName} onChange={e => setNewMyanmarName(e.target.value)} required className="mt-1 w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" />
-            </div>
-          )}
-          
-          <div className="col-span-full">
-            <label className="block text-sm font-medium">{t('notes')}</label>
-            <textarea value={newNotes} onChange={e => setNewNotes(e.target.value)} rows={3} className="mt-1 w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" />
-          </div>
-          <div className="col-span-full flex justify-end">
-            <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-semibold h-fit">{t('submit')}</button>
-          </div>
-        </form>
-      )}
+      </div>
+      <JobPositionAddModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} />
     </div>
   );
 };

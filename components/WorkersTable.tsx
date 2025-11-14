@@ -3,6 +3,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useMasterData } from '../contexts/MasterDataContext';
 import ConfirmDialog from './ConfirmDialog';
+import WorkerAddModal from './WorkerAddModal';
 
 const WorkersTable: React.FC = () => {
   const { t } = useLanguage();
@@ -15,11 +16,7 @@ const WorkersTable: React.FC = () => {
   // "editedData" က "types.ts" (Blueprint) အသစ်နဲ့ ကိုက်ညီနေရပါမယ်။
   const [editedData, setEditedData] = useState<Partial<Worker>>({});
 
-  const [newId, setNewId] = useState('');
-  const [newName, setNewName] = useState('');
-  
-  // "newPosition" (နာမည်) အစား "newPositionId" (ID) ကို မှတ်သားပါမယ်။
-  const [newPositionId, setNewPositionId] = useState('');
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   const handleEdit = (worker: Worker) => {
     setEditingId(worker.id);
@@ -39,21 +36,7 @@ const WorkersTable: React.FC = () => {
     }
   };
 
-  const handleAdd = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // "newPosition" (နာမည်) အစား "newPositionId" (ID) ကို check လုပ်ပါ။
-    if (newId && newName && newPositionId) {
-      
-      // "handleAddWorker" ကို ခေါ်တဲ့အခါ "Blueprint" အသစ် (`types.ts`) အတိုင်း၊
-      // "positionId" (ID) ကို ထည့်သွင်း ပို့ပေးလိုက်ပါ။
-      handleAddWorker({ id: newId, name: newName, positionId: newPositionId });
-      
-      setNewId('');
-      setNewName('');
-      setNewPositionId(''); // State ကို ID နဲ့ပဲ reset လုပ်ပါ။
-    }
-  };
+  // Add modal is used for creating new workers now.
   
   const isOwner = role === 'owner';
 
@@ -75,14 +58,20 @@ const WorkersTable: React.FC = () => {
           </div>
         </div>
       )}
+      <div>
+      {isOwner && (
+        <div className="flex justify-end mb-4">
+          <button onClick={() => setIsAddModalOpen(true)} className="px-3 py-1 text-sm font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700">{t('addNewWorker')}</button>
+        </div>
+      )}
       <div className="overflow-x-auto">
       <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
         <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
           <tr>
             <th scope="col" className="px-6 py-3">ID</th>
             <th scope="col" className="px-6 py-3">{t('workerName')}</th>
-            <th scope="col" className="px-6 py-3">{t('position')}</th>
-            {isOwner && <th scope="col" className="px-6 py-3">{t('actions')}</th>}
+            <th scope="col" className="px-6 py-3 md:w-48">{t('position')}</th>
+            {isOwner && <th scope="col" className="px-6 py-3 md:w-40">{t('actions')}</th>}
           </tr>
         </thead>
         <tbody>
@@ -134,6 +123,7 @@ const WorkersTable: React.FC = () => {
           ))}
         </tbody>
       </table>
+      </div>
       <ConfirmDialog
         isOpen={!!deleteConfirm}
         title={t('delete')}
@@ -149,36 +139,7 @@ const WorkersTable: React.FC = () => {
         }}
         onCancel={() => setDeleteConfirm(null)}
       />
-      {isOwner && (
-        <form onSubmit={handleAdd} className="mt-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-          <h3 className="col-span-full text-md font-semibold">{t('addNewWorker')}</h3>
-          <div>
-            <label className="block text-sm font-medium">{t('workerId')}</label>
-            <input type="text" value={newId} onChange={e => setNewId(e.target.value)} required className="mt-1 w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium">{t('workerName')}</label>
-            <input type="text" value={newName} onChange={e => setNewName(e.target.value)} required className="mt-1 w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium">{t('position')}</label>
-            {/* "Add New" Dropdown က "newPositionId" (ID) ကို သုံးရပါမယ်။ */}
-            <select 
-              value={newPositionId} 
-              onChange={e => setNewPositionId(e.target.value)} 
-              required 
-              className="mt-1 w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-            >
-              <option value="">Select Position</option>
-              {/* Dropdown ရဲ့ "value" က "p.id" (ID) ဖြစ်ရပါမယ်။
-                User ကို ပြမယ့် စာသားက "p.englishName" (နာမည်) ဖြစ်ရပါမယ်။
-              */}
-              {jobPositions.map(p => <option key={p.id} value={p.id}>{p.englishName}</option>)}
-            </select>
-          </div>
-          <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-semibold h-fit">{t('submit')}</button>
-        </form>
-      )}
+      <WorkerAddModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} />
       </div>
     </div>
   );

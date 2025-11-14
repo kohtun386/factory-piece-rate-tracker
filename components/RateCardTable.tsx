@@ -77,9 +77,9 @@ const RateCardTable: React.FC = () => {
           <tr>
             <th scope="col" className="px-6 py-3">ID</th>
             <th scope="col" className="px-6 py-3">{t('taskName')}</th>
-            <th scope="col" className="px-6 py-3">{t('unit')}</th>
+            <th scope="col" className="px-6 py-3 md:w-48">{t('unit')}</th>
             <th scope="col" className="px-6 py-3 text-right">{t('rate')}</th>
-            {isOwner && <th scope="col" className="px-6 py-3">{t('actions')}</th>}
+            {isOwner && <th scope="col" className="px-6 py-3 md:w-40">{t('actions')}</th>}
           </tr>
         </thead>
         <tbody>
