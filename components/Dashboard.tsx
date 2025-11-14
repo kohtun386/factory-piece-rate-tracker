@@ -79,15 +79,17 @@ const Dashboard: React.FC<DashboardProps> = (/* { entries } */) => {
       .sort((a, b) => b.totalPay - a.totalPay);
   }, [filteredEntries]);
 
-  const productivityData = useMemo<{ Day: number; Night: number }>(() => {
-    return filteredEntries.reduce<{ Day: number, Night: number }>((acc, entry) => {
-        const completedQty = Number(entry.completedQuantity) || 0;
-        acc[entry.shift] = (acc[entry.shift] || 0) + completedQty;
-        return acc;
-    }, { Day: 0, Night: 0 });
-  }, [filteredEntries]);
-  
-  const maxProductivity = Math.max(productivityData.Day, productivityData.Night) || 1;
+  const productivityData = useMemo<{ Day: number; Night: number }>(() => {
+    return filteredEntries.reduce<{ Day: number; Night: number }>((acc, entry) => {
+        const completedQty = Number(entry.completedQuantity) || 0;
+        // Ensure we only write to the Day/Night keys and initialize as numbers
+        const key = entry.shift === 'Night' ? 'Night' : 'Day';
+        acc[key] = (Number(acc[key]) || 0) + completedQty;
+        return acc;
+    }, { Day: 0, Night: 0 });
+  }, [filteredEntries]);
+
+  const maxProductivity = Math.max(Number(productivityData.Day) || 0, Number(productivityData.Night) || 0) || 1;
 
   const qualityData = useMemo<{ taskName: string; totalDefects: number }[]>(() => {
     const defectsByPosition = filteredEntries.reduce<Record<string, number>>((acc, entry) => {
@@ -181,19 +183,23 @@ const Dashboard: React.FC<DashboardProps> = (/* { entries } */) => {
             <div className="bg-gray-50 dark:bg-gray-900/50 p-6 rounded-lg">
                 <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">{t('productivityByShift')}</h3>
                 <div className="h-64 flex items-end justify-around gap-4 pt-4">
-                    {Object.entries(productivityData).map(([shift, qty]: [string, number]) => (
-                        <div key={shift} className="flex flex-col items-center flex-1">
-                            <div className="w-full h-full flex items-end">
-                                <div 
-                                    className={`w-full rounded-t-md ${shift === 'Day' ? 'bg-yellow-400' : 'bg-indigo-500'}`}
-                                    style={{ height: `${(qty / maxProductivity) * 100}%`, transition: 'height 0.5s ease-in-out' }}
-                                    title={`${qty.toLocaleString()} ${t('units')}`}
-                                ></div>
-                            </div>
-                             <span className="text-xs font-bold text-gray-700 dark:text-gray-300 mt-2">{qty.toLocaleString()}</span>
-                            <span className="text-sm font-medium text-gray-500 dark:text-gray-400">{t(shift.toLowerCase())}</span>
-                        </div>
-                    ))}
+      {Object.entries(productivityData).map(([shift, qty]: [string, number]) => {
+        const qtyNum = Number(qty) || 0;
+        const heightInRem = (qtyNum / maxProductivity) * 16; // 16rem = h-64
+        return (
+        <div key={shift} className="flex flex-col items-center flex-1">
+          <div className="w-full h-full flex items-end">
+            <div 
+              className={`w-full rounded-t-md ${shift === 'Day' ? 'bg-yellow-400' : 'bg-indigo-500'}`}
+              style={{ height: `${heightInRem}rem`, transition: 'height 0.5s ease-in-out' }}
+              title={`${qtyNum.toLocaleString()} ${t('units')}`}
+            ></div>
+          </div>
+           <span className="text-xs font-bold text-gray-700 dark:text-gray-300 mt-2">{qtyNum.toLocaleString()}</span>
+          <span className="text-sm font-medium text-gray-500 dark:text-gray-400">{t(shift.toLowerCase())}</span>
+        </div>
+        );
+      })}
                 </div>
             </div>
 
