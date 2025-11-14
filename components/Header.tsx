@@ -1,48 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
 import LanguageSwitcher from './LanguageSwitcher';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
-import { UserRole } from '../types';
-import OwnerPasswordModal from './OwnerPasswordModal';
 
 const Header: React.FC = () => {
 const { t } = useLanguage();
-  const { clientData, logout, role, setRole } = useAuth(); // verifyOwnerPassword ကို ဖျက်လိုက်ပါ
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
-  const handleRoleChange = (newRole: UserRole) => {
-    if (newRole === 'owner') {
-      if (clientData && clientData.ownerPassword) {
-        setIsModalOpen(true);
-      } else {
-        setRole('owner');
-      }
-    } else {
-      setRole(newRole);
-    }
-  };
-
-// Header.tsx - handlePasswordSubmit (အသစ်)
-  const handlePasswordSubmit = (password: string): boolean => {
-    // 🚨 BUG FIX: clientData ထဲက password နဲ့ တိုက်ရိုက် စစ်ပါ
-    // ဒါက Demo Mode အတွက် အလုပ်လုပ်ပါလိမ့်မယ်
-    if (clientData && password === clientData.ownerPassword) {
-      setRole('owner');      // Role ကို "Owner" ပြောင်းပါ
-      setIsModalOpen(false); // Modal ကို ပိတ်ပါ
-      return true;
-    }
-    
-    // Password မှားခဲ့ရင် false ပြန်ပေးပါ
-    return false;
-  };
-  const roleButtonClasses = (buttonRole: UserRole) =>
-    `px-3 py-1 text-sm font-medium rounded-md transition-colors duration-200 ${
-      role === buttonRole
-        ? 'bg-blue-600 text-white'
-        : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-    }`;
-
-  return (
+  const { clientData, logout } = useAuth();  return (
     <>
       <header className="bg-white dark:bg-gray-800 shadow-md p-4 mb-8 noprint">
         {/*
@@ -72,15 +35,6 @@ const { t } = useLanguage();
                   </span>
                 </div>
 
-                <div className="flex items-center space-x-1 p-1 bg-gray-100 dark:bg-gray-900 rounded-lg">
-                  <button onClick={() => handleRoleChange('supervisor')} className={roleButtonClasses('supervisor')}>
-                    {t('loginAsSupervisor')}
-                  </button>
-                  <button onClick={() => handleRoleChange('owner')} className={roleButtonClasses('owner')}>
-                    {t('loginAsOwner')}
-                  </button>
-                </div>
-
                 <button onClick={logout} className="px-3 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">
                   {t('logout')}
                 </button>
@@ -90,11 +44,6 @@ const { t } = useLanguage();
           </div>
         </div>
       </header>
-      <OwnerPasswordModal 
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSubmit={handlePasswordSubmit}
-      />
     </>
   );
 };

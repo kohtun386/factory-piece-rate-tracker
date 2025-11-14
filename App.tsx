@@ -147,7 +147,7 @@ useEffect(() => {
                                     </div>
                                 )}
 
-                                {role === 'supervisor' && <ProductionForm onEntryAdded={triggerRefresh} />}
+                                {(role === 'supervisor' || role === 'owner') && view === 'data' && <ProductionForm onEntryAdded={triggerRefresh} />}
 
                                 {view === 'dashboard' && role === 'owner' && <Dashboard />}
 

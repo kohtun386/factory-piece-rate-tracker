@@ -67,6 +67,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setClientData(data);
           setIsAuthenticated(true);
           setUserEmail(email); // Demo mode မှာလည်း email ကို set လုပ်ပါ
+          
+          // In demo mode, compare email with owner email to determine role
+          if (email === 'owner@client001.com' || email === 'owner@client002.com') {
+            setRole('owner');
+          } else {
+            setRole('supervisor');
+          }
+          
           setIsLoading(false);
           return { success: true };
         } else if (data) {
@@ -107,6 +115,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setClientData(data);
           setIsAuthenticated(true);
           setUserEmail(email); // (onAuthChange က ဒါကို လုပ်ပြီးသားပါ)
+          
+          // Determine role based on ownerUid comparison
+          if (authResult.user && authResult.user.uid === data.ownerUid) {
+            setRole('owner');
+          } else {
+            setRole('supervisor');
+          }
+          
           setIsLoading(false);
           return { success: true };
         }
