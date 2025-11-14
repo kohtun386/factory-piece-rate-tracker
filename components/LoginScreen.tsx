@@ -202,7 +202,6 @@ const LoginScreen: React.FC = () => {
                     </div>
                     <div className="flex gap-2">
                         <button onClick={handleSaveConfig} className="flex-1 px-3 py-2 text-xs font-medium text-white bg-green-600 rounded-md hover:bg-green-700">{t('saveConfig')}</button>
-                        <button onClick={handleUseDemoData} className="flex-1 px-3 py-2 text-xs font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">{t('useDemoData')}</button>
                     </div>
                     {configStatus && <p className="text-xs text-center pt-2 text-gray-600 dark:text-gray-300">{configStatus}</p>}
                 </div>
