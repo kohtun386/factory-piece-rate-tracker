@@ -1,33 +1,51 @@
 import React, { ReactNode } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import PaywallExpiredPage from './PaywallExpiredPage';
+import UpgradePage from './UpgradePage';
 
 interface SubscriptionGateProps {
   children: ReactNode;
 }
 
+const asDate = (ts: any): Date | null => {
+  if (!ts) return null;
+  if (ts instanceof Date) return ts;
+  if (typeof ts.toDate === 'function') return ts.toDate();
+  if (typeof ts.seconds === 'number') return new Date(ts.seconds * 1000);
+  try {
+    const d = new Date(ts);
+    if (!isNaN(d.getTime())) return d;
+  } catch (_) {}
+  return null;
+};
+
 const SubscriptionGate: React.FC<SubscriptionGateProps> = ({ children }) => {
-  const { clientData } = useAuth();
+  const { clientData, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
+        <div className="loader ease-linear rounded-full border-8 border-t-8 border-gray-200 h-16 w-16"></div>
+      </div>
+    );
+  }
 
   if (!clientData) {
-    // Should not happen if gate is used correctly, but good for safety
-    return <PaywallExpiredPage clientName="Guest" />;
+    return <UpgradePage />;
   }
 
-  const { subscriptionStatus, trialEndDate } = clientData;
+  const subscriptionStatus = (clientData.subscriptionStatus || '').toLowerCase();
 
-  if (subscriptionStatus === 'PAID') {
-    return <>{children}</>;
-  }
+  // Support both `trialEndDate` and `trialEndsAt` naming used in codebase/history
+  const rawTrial = (clientData as any).trialEndDate || (clientData as any).trialEndsAt || (clientData as any).trialEndsAt;
+  const trialDate = asDate(rawTrial);
 
-  if (subscriptionStatus === 'TRIAL') {
-    if (trialEndDate && trialEndDate.toDate() > new Date()) {
-      return <>{children}</>; // Trial is active
-    }
-  }
-  
-  // All other cases (TRIAL expired, invalid status) fall through to the paywall.
-  return <PaywallExpiredPage clientName={clientData.clientName} />;
+  const isTrialActive = subscriptionStatus === 'trial' && trialDate && trialDate > new Date();
+  const isSubActive = subscriptionStatus === 'active';
+  const isOk = isTrialActive || isSubActive;
+
+  if (isOk) return <>{children}</>;
+
+  return <UpgradePage />;
 };
 
 export default SubscriptionGate;

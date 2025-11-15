@@ -25,3 +25,17 @@
     display: none !important;
   }
 }
+
+/* Simple loader used by SubscriptionGate */
+.loader {
+  border-top-color: #3490dc; /* Tailwind blue-600 */
+  -webkit-animation: spin 1s linear infinite;
+          animation: spin 1s linear infinite;
+}
+
+@-webkit-keyframes spin {
+  to { -webkit-transform: rotate(360deg); }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

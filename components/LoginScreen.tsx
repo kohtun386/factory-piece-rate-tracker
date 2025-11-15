@@ -152,6 +152,10 @@ const LoginScreen: React.FC = () => {
                 </button>
               </div>
             </form>
+
+            <div className="text-center mt-3">
+              <a href="/signup" className="text-sm text-blue-600 dark:text-blue-400 hover:underline">Don't have an account? Sign Up</a>
+            </div>
             
             {!isUsingFirebase && (
                 <div className="text-center text-xs text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700 pt-4">
