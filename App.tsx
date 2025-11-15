@@ -28,38 +28,21 @@ type View = 'dashboard' | 'data' | 'master' | 'audit' | 'workerLogs' | 'settings
 // const jobPositionToDoc = (position: JobPosition) => ({ ...position, id: position.englishName });
 
 const AppContent: React.FC = () => {
-    const { isAuthenticated, role } = useAuth();
+    const { isAuthenticated, role, isLoading } = useAuth();
     const { t } = useLanguage();
     const { addToast } = useToast();
-    const [isLoadingData, setIsLoadingData] = useState(true);
-    // Note: ProductionEntry and PaymentLog are now fetched on-demand in their respective components (lazy-loading)
-    // Master data (workers, rateCard, jobPositions) is now provided by MasterDataContext
-    const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
-    const [view, setView] = useState<View>(role === 'owner' ? 'dashboard' : 'data');
+    
+    // State for authenticated view
+    const [view, setView] = useState<View>('dashboard');
     const [refreshCounter, setRefreshCounter] = useState(0);
+    
+    // State for data fetching within the authenticated app
+    const [isLoadingData, setIsLoadingData] = useState(true);
+    const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
     const [allEntriesForPrint, setAllEntriesForPrint] = useState<ProductionEntry[]>([]);
     const [isPrintingAll, setIsPrintingAll] = useState(false);
 
-    const triggerRefresh = useCallback(() => {
-        setRefreshCounter(c => c + 1);
-    }, []);
-
-    const handlePrintAll = useCallback(async () => {
-        setIsPrintingAll(true);
-        try {
-            // Fetch all production entries (not paginated)
-            const allEntries = await getCollection<ProductionEntry>('productionEntries');
-            setAllEntriesForPrint(allEntries);
-            // Schedule print after state update
-            setTimeout(() => {
-                window.print();
-            }, 100);
-        } catch (error) {
-            console.error("Failed to fetch entries for printing:", error);
-            addToast("Failed to load entries for printing", "error");
-            setIsPrintingAll(false);
-        }
-    }, [addToast]);
+    const triggerRefresh = useCallback(() => setRefreshCounter(c => c + 1), []);
 
     const logAuditEvent = useCallback(async (action: AuditAction, target: AuditTarget, details: string) => {
         const newLogEntry: AuditEntry = {
@@ -80,57 +63,67 @@ const AppContent: React.FC = () => {
 
     useEffect(() => {
         if (isAuthenticated) {
-            const fetchAudit = async () => {
+            // Set default view based on role
+            setView(role === 'owner' ? 'dashboard' : 'data');
+
+            // Fetch data needed for the authenticated app
+            const fetchData = async () => {
                 setIsLoadingData(true);
                 try {
                     const auditLogData = await getCollection<AuditEntry>('auditLog');
                     setAuditLog(auditLogData.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
                 } catch (error) {
-                    console.error("Error fetching audit log from Firestore:", error);
+                    console.error("Error fetching initial data:", error);
                 } finally {
                     setIsLoadingData(false);
                 }
             };
-            fetchAudit();
+            fetchData();
         }
-    }, [isAuthenticated]);
+    }, [isAuthenticated, role]);
 
-    // Handle clearing print data after print completes
+    const handlePrintAll = useCallback(async () => {
+        setIsPrintingAll(true);
+        try {
+            const allEntries = await getCollection<ProductionEntry>('productionEntries');
+            setAllEntriesForPrint(allEntries);
+            setTimeout(() => window.print(), 100);
+        } catch (error) {
+            console.error("Failed to fetch entries for printing:", error);
+            addToast("Failed to load entries for printing", "error");
+            setIsPrintingAll(false);
+        }
+    }, [addToast]);
+
     useEffect(() => {
         const handleAfterPrint = () => {
             setAllEntriesForPrint([]);
             setIsPrintingAll(false);
         };
         window.addEventListener('afterprint', handleAfterPrint);
-        return () => {
-            window.removeEventListener('afterprint', handleAfterPrint);
-        };
+        return () => window.removeEventListener('afterprint', handleAfterPrint);
     }, []);
 
-useEffect(() => {
-            // Restore original behavior: owner should default to dashboard, supervisors to data.
-            setView(role === 'owner' ? 'dashboard' : 'data');
-        }, [role]);
+    // --- Main Render Logic ---
+
+    // 1. While auth state is resolving, show a global loader
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
+                <div className="text-xl font-semibold animate-pulse">Loading Application...</div>
+            </div>
+        );
+    }
+
+    // 2. If user is NOT authenticated, show public pages
     if (!isAuthenticated) {
-        // Lightweight routing: show SignUpScreen for `/signup` path without adding react-router
-        if (typeof window !== 'undefined' && window.location && window.location.pathname === '/signup') {
+        if (typeof window !== 'undefined' && window.location.pathname === '/signup') {
             return <SignUpScreen />;
         }
         return <LoginScreen />;
     }
 
-    // Note: addProductionEntry removed - ProductionData now manages its own data fetching and submission
-    // This was necessary for implementing pagination on the production entries table
-
-    // Master data CRUD handlers have been moved into MasterDataContext
-    
-    // Note: handleAddPaymentLog removed - WorkerLogsPage now manages payment logging with pagination
-    // This was necessary for implementing pagination on payment logs
-
-    // Note: handleExportToCSV removed - will be moved to ProductionData component
-    // This allows CSV export to work with paginated data
-
-
+    // 3. If user IS authenticated, show the main application
     return (
         <MasterDataProvider onAudit={logAuditEvent}>
             <div className="bg-gray-100 dark:bg-gray-900 min-h-screen text-gray-800 dark:text-gray-200 font-sans">
@@ -155,9 +148,7 @@ useEffect(() => {
                                 )}
 
                                 {(role === 'supervisor' || role === 'owner') && view === 'data' && <ProductionForm onEntryAdded={triggerRefresh} />}
-
                                 {view === 'dashboard' && role === 'owner' && <Dashboard />}
-
                                 {view === 'data' && (
                                     <div className="bg-white dark:bg-gray-800 shadow-2xl rounded-xl p-6 md:p-8">
                                         <div className="flex justify-between items-center mb-4 noprint">
@@ -167,21 +158,14 @@ useEffect(() => {
                                             </div>
                                         </div>
                                         <ProductionData refreshCounter={refreshCounter} />
-                                        {/* Hidden area for printing all entries */}
                                         <div className="printable-area">
                                             <PrintableLog entries={allEntriesForPrint} />
                                         </div>
                                     </div>
                                 )}
-
                                 {view === 'audit' && role === 'owner' && <AuditLogView auditLog={auditLog} />}
-
                                 {view === 'settings' && role === 'owner' && <SettingsPage />}
-
-                                {view === 'workerLogs' && role === 'owner' && (
-                                    <WorkerLogsPage />
-                                )}
-
+                                {view === 'workerLogs' && role === 'owner' && <WorkerLogsPage />}
                                 {view === 'master' && role === 'owner' && (
                                     <div className="space-y-8">
                                         <div className="bg-white dark:bg-gray-800 shadow-2xl rounded-xl p-6 md:p-8">

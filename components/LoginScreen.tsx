@@ -132,7 +132,28 @@ const LoginScreen: React.FC = () => {
             <div className="text-center mt-3">
               <a href="/signup" className="text-sm text-blue-600 dark:text-blue-400 hover:underline">Don't have an account? Sign Up</a>
             </div>
-            
+
+            {isDemoMode && (
+                <div className="text-center text-xs text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700 pt-4">
+                <p className="font-semibold mb-2">{t('demoAccountsHint')}</p>
+                <div className="space-y-2">
+                    {demoAccounts.map((account, idx) => (
+                    <div key={idx}>
+                      <button 
+                        type="button"
+                        onClick={() => { setEmail(account.email); setPassword(account.password); }}
+                        className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        {account.email} / <code>{account.password}</code>
+                      </button>
+                    </div>
+                    ))}
+                </div>
+                </div>
+            )}
+          </>
+        )}
+
         {/* --- Configuration UI --- */}
         <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
             <div className="text-center">
