@@ -4,5 +4,13 @@
 			"path": ".."
 		}
 	],
-	"settings": {}
+	"settings": {
+		"geminicodeassist.agentDebugMode": true,
+		"geminicodeassist.agentYoloMode": true
+	},
+	"extensions": {
+		"recommendations": [
+			"google.geminicodeassist"
+		]
+	}
 }

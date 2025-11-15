@@ -110,7 +110,7 @@ MOCK_FIRESTORE_DB: {
     clientData: {
       clientName: "Thiri Swe Textile Factory",
       ownerEmail: "owner@client001.com",  // New field
-      subscriptionStatus: "TRIAL"
+      subscriptionStatus: "trial"
     }
   }
 }
@@ -175,7 +175,7 @@ clients/
   │   ├── clientName: string
   │   ├── ownerUid: string                 // ← NEW: Firebase Auth UID (security key)
   │   ├── ownerEmail: string               // ← NEW: For email-based lookup
-  │   ├── subscriptionStatus: "TRIAL"|"PAID"
+  │   ├── subscriptionStatus: "trial"|"active"
   │   ├── trialEndDate: timestamp (optional)
   │   │
   │   ├── workers/
@@ -226,7 +226,7 @@ const { uid } = await registerUserWithEmail('owner@client001.com', 'password123'
   clientName: "Thiri Swe Textile Factory",
   ownerUid: uid,              // Add this
   ownerEmail: 'owner@client001.com',  // Add this
-  subscriptionStatus: "TRIAL",
+  subscriptionStatus: "trial",
   trialEndDate: {...}
 }
 

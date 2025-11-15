@@ -208,7 +208,7 @@ const MOCK_FIRESTORE_DB: Record<string, MockClient> = {
   "client-001": {
     clientData: {
         clientName: "Thiri Swe Textile Factory",
-        subscriptionStatus: "TRIAL",
+        subscriptionStatus: "trial",
         ownerPassword: "Factory123456",
         ownerEmail: "owner@client001.com",
         trialEndDate: {
@@ -251,7 +251,7 @@ const MOCK_FIRESTORE_DB: Record<string, MockClient> = {
   "client-002": {
     clientData: {
         clientName: "Paid Customer Inc.",
-        subscriptionStatus: "PAID",
+        subscriptionStatus: "active",
         ownerPassword: "123456",
         ownerEmail: "owner@client002.com",
     },
@@ -260,7 +260,7 @@ const MOCK_FIRESTORE_DB: Record<string, MockClient> = {
   "client-expired": {
     clientData: {
         clientName: "Expired Trial Co.",
-        subscriptionStatus: "TRIAL",
+      subscriptionStatus: "trial",
         trialEndDate: {
             seconds: 1609459200, // Jan 1, 2021 (in the past)
             nanoseconds: 0,
@@ -538,4 +538,74 @@ export const deleteDocument = async (collectionName: string, docId: string): Pro
             }
         }
     }
+};
+
+/**
+ * Creates a new client document in Firestore (or mock DB) and sets the currentClientId.
+ * Uses ownerUid as the client document ID to simplify lookups and ownership checks.
+ */
+export const createClient = async (ownerUid: string, ownerEmail: string, clientName: string, trialEndDate?: Date, subscriptionStatus: string = 'trial'): Promise<{ success: boolean; clientId?: string; error?: string }> => {
+  const clientId = ownerUid;
+
+  const clientDoc: any = {
+    clientName,
+    subscriptionStatus,
+    ownerUid,
+    ownerEmail
+  };
+
+  if (trialEndDate) {
+    const seconds = Math.floor(trialEndDate.getTime() / 1000);
+    clientDoc.trialEndDate = { seconds, nanoseconds: 0, toDate: () => trialEndDate };
+  }
+
+  if (db) {
+    try {
+      const docRef = doc(db, 'clients', clientId);
+      await setDoc(docRef, clientDoc);
+      currentClientId = clientId;
+      return { success: true, clientId };
+    } catch (error: any) {
+      console.error('createClient failed:', error);
+      return { success: false, error: error.message || 'createClient failed' };
+    }
+  }
+
+  // Mock DB fallback
+  MOCK_FIRESTORE_DB[clientId] = {
+    clientData: clientDoc,
+    collections: { jobPositions: [], workers: [], rateCard: [], productionEntries: [], paymentLogs: [], auditLog: [] }
+  };
+  currentClientId = clientId;
+  return { success: true, clientId };
+};
+
+/**
+ * Adds a user record under the client's `users` subcollection (real Firestore or mock).
+ */
+export const createUserForClient = async (clientId: string, uid: string, userData: any): Promise<{ success: boolean; error?: string }> => {
+  if (db) {
+    try {
+      const userDocRef = doc(db, 'clients', clientId, 'users', uid);
+      await setDoc(userDocRef, userData);
+      return { success: true };
+    } catch (error: any) {
+      console.error('createUserForClient failed:', error);
+      return { success: false, error: error.message || 'createUserForClient failed' };
+    }
+  }
+
+  // Mock DB fallback - store minimal info in client collections.users map
+  const clientMock = MOCK_FIRESTORE_DB[clientId];
+  if (!clientMock) {
+    return { success: false, error: 'Client not found in mock DB' };
+  }
+  // Create a simple users map on the mock clientData if absent
+  (clientMock.clientData as any).users = (clientMock.clientData as any).users || {};
+  (clientMock.clientData as any).users[uid] = userData;
+  return { success: true };
+};
+
+export const setCurrentClientId = (clientId: string | null) => {
+  currentClientId = clientId;
 };

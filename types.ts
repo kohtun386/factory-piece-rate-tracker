@@ -1,7 +1,7 @@
 // FIX: Removed self-import of 'FirebaseTimestamp' to resolve the name conflict error. The interface is defined within this file.
 export type Shift = 'Day' | 'Night';
 export type UserRole = 'owner' | 'supervisor';
-export type SubscriptionStatus = 'TRIAL' | 'PAID' | 'EXPIRED' | 'INVALID';
+export type SubscriptionStatus = 'trial' | 'active' | 'expired' | 'cancelled' | 'pending';
 
 export interface ProductionEntry {
   id: string;
@@ -70,7 +70,7 @@ export interface FirebaseTimestamp {
 
 export interface ClientData {
   clientName: string;
-  subscriptionStatus: 'TRIAL' | 'PAID';
+  subscriptionStatus: SubscriptionStatus;
   trialEndDate?: FirebaseTimestamp;
   ownerPassword?: string; // Optional field for backward compatibility
   ownerEmail?: string; // Email of the account owner (used for Firebase Auth)

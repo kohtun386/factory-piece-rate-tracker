@@ -30,7 +30,7 @@ const { t } = useLanguage();
               <div className="flex flex-col space-y-4 items-start md:flex-row md:items-center md:space-x-4 md:space-y-0">
                 <div className="text-right">
                   <span className="text-sm font-semibold text-gray-800 dark:text-white">{clientData.clientName}</span>
-                  <span className={`block text-xs font-medium ${clientData.subscriptionStatus === 'TRIAL' ? 'text-yellow-500' : 'text-green-500'}`}>
+                  <span className={`block text-xs font-medium ${clientData.subscriptionStatus === 'trial' ? 'text-yellow-500' : 'text-green-500'}`}>
                     {clientData.subscriptionStatus}
                   </span>
                 </div>

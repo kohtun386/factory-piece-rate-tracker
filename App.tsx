@@ -12,7 +12,9 @@ import RateCardTable from './components/RateCardTable';
 import JobPositionsTable from './components/JobPositionsTable';
 import AuditLogView from './components/AuditLogView';
 import LoginScreen from './components/LoginScreen';
+import SignUpScreen from './components/SignUpScreen';
 import SubscriptionGate from './components/SubscriptionGate';
+import SettingsPage from './components/SettingsPage';
 import WorkerLogsPage from './components/WorkerLogsPage';
 import PrintableLog from './components/PrintableLog';
 import { AuditEntry, AuditAction, AuditTarget, ProductionEntry } from './types';
@@ -20,7 +22,7 @@ import { getCollection, addDocument } from './lib/firebase';
 import { MasterDataProvider } from './contexts/MasterDataContext';
 import './index.css';
 
-type View = 'dashboard' | 'data' | 'master' | 'audit' | 'workerLogs';
+type View = 'dashboard' | 'data' | 'master' | 'audit' | 'workerLogs' | 'settings';
 
 // "englishName" ကို "id" အဖြစ် သုံးနေတဲ့ "Database Design" အမှားကို ဖယ်ရှားလိုက်ပါပြီ။
 // const jobPositionToDoc = (position: JobPosition) => ({ ...position, id: position.englishName });
@@ -110,6 +112,10 @@ useEffect(() => {
             setView(role === 'owner' ? 'dashboard' : 'data');
         }, [role]);
     if (!isAuthenticated) {
+        // Lightweight routing: show SignUpScreen for `/signup` path without adding react-router
+        if (typeof window !== 'undefined' && window.location && window.location.pathname === '/signup') {
+            return <SignUpScreen />;
+        }
         return <LoginScreen />;
     }
 
@@ -144,6 +150,7 @@ useEffect(() => {
                                         <button onClick={() => setView('workerLogs')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${view === 'workerLogs' ? 'bg-blue-600 text-white shadow' : 'bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600'}`}>{t('viewWorkerLogs')}</button>
                                         <button onClick={() => setView('master')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${view === 'master' ? 'bg-blue-600 text-white shadow' : 'bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600'}`}>{t('viewMasterData')}</button>
                                         <button onClick={() => setView('audit')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${view === 'audit' ? 'bg-blue-600 text-white shadow' : 'bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600'}`}>{t('viewAuditLog')}</button>
+                                        <button onClick={() => setView('settings')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${view === 'settings' ? 'bg-blue-600 text-white shadow' : 'bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600'}`}>Settings</button>
                                     </div>
                                 )}
 
@@ -168,6 +175,8 @@ useEffect(() => {
                                 )}
 
                                 {view === 'audit' && role === 'owner' && <AuditLogView auditLog={auditLog} />}
+
+                                {view === 'settings' && role === 'owner' && <SettingsPage />}
 
                                 {view === 'workerLogs' && role === 'owner' && (
                                     <WorkerLogsPage />

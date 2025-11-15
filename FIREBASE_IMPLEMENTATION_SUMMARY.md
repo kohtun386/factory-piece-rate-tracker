@@ -109,7 +109,7 @@ Extended `ClientData` interface:
 ```typescript
 export interface ClientData {
   clientName: string;
-  subscriptionStatus: 'TRIAL' | 'PAID';
+  subscriptionStatus: 'trial' | 'active';
   trialEndDate?: FirebaseTimestamp;
   ownerPassword?: string;        // Deprecated (backward compat)
   ownerEmail?: string;           // NEW: For email-based lookup
@@ -271,7 +271,7 @@ Database (Firestore)
        clientName,
        ownerUid: userRecord.uid,
        ownerEmail: email,
-       subscriptionStatus: 'TRIAL',
+      subscriptionStatus: 'trial',
        trialEndDate: ...
      });
      

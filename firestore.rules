@@ -17,11 +17,41 @@ service cloud.firestore {
       return isAuth() && 
              get(/databases/$(database)/documents/clients/$(clientId)).data.ownerUid == request.auth.uid;
     }
+
+    // Check if user is a member (Owner OR Supervisor)
+    function isClientMember(clientId) {
+      let data = getClientData(clientId);
+      return isAuth() && 
+             (data.ownerUid == request.auth.uid ||
+              request.auth.uid in data.supervisorUids);
+    }
     
     // Check if user is the owner of a worker's client
     function isWorkerOwner(clientId) {
       return isAuth() && 
              get(/databases/$(database)/documents/clients/$(clientId)).data.ownerUid == request.auth.uid;
+    }
+    
+    // Get client data document
+    function getClientData(clientId) {
+      return get(/databases/$(database)/documents/clients/$(clientId)).data;
+    }
+    
+    // Check if subscription is active
+    function isSubActive(clientId) {
+      let status = getClientData(clientId).subscriptionStatus;
+      return status == 'active';
+    }
+    
+    // Check if trial is active (trial status AND not expired)
+    function isTrialActive(clientId) {
+      let data = getClientData(clientId);
+      return data.subscriptionStatus == 'trial' && request.time < data.trialEndsAt;
+    }
+    
+    // Check if subscription is valid (active OR trial still active)
+    function isSubscriptionValid(clientId) {
+      return isSubActive(clientId) || isTrialActive(clientId);
     }
     
     // ========================================
@@ -31,8 +61,8 @@ service cloud.firestore {
     // Document ID = clientId, stores ownerUid, clientName, subscriptionStatus, etc.
     
     match /clients/{clientId} {
-      // Read: Only the owner can read their client data
-      allow read: if isClientOwner(clientId);
+      // Read: Owner or supervisors (client members) can read their client data
+      allow read: if isClientMember(clientId);
       
       // Write (Create/Update): 
       // - Create: Only authenticated users can create (ownerUid must match)
@@ -52,7 +82,7 @@ service cloud.firestore {
       // All subcollections can only be accessed by the client owner
       
       match /{subcollection=**} {
-        allow read, write: if isClientOwner(clientId);
+        allow read, write: if isClientMember(clientId) && isSubscriptionValid(clientId);
       }
     }
     
@@ -64,7 +94,8 @@ service cloud.firestore {
     
     match /auditLog/{auditId} {
       allow read: if isAuth() && 
-                     isClientOwner(resource.data.clientId);
+                     isClientMember(resource.data.clientId) &&
+                     isSubscriptionValid(resource.data.clientId);
       
       // Backend only (via Cloud Functions with admin SDK)
       allow write: if false;
