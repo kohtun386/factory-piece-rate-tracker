@@ -24,9 +24,6 @@ import './index.css';
 
 type View = 'dashboard' | 'data' | 'master' | 'audit' | 'workerLogs' | 'settings';
 
-// "englishName" ကို "id" အဖြစ် သုံးနေတဲ့ "Database Design" အမှားကို ဖယ်ရှားလိုက်ပါပြီ။
-// const jobPositionToDoc = (position: JobPosition) => ({ ...position, id: position.englishName });
-
 const AppContent: React.FC = () => {
     const { isAuthenticated, role, isLoading } = useAuth();
     const { t } = useLanguage();
