@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { initializeFirebase, saveFirebaseConfig, loadFirebaseConfig, clearFirebaseConfig, registerUserWithEmail, initializeAuth } from '../lib/firebase';
+import { saveFirebaseConfig, loadFirebaseConfig, clearFirebaseConfig } from '../lib/firebase';
 import { FirebaseConfig } from '../types';
 import { defaultConfig } from '../lib/firebaseConfig';
 
@@ -15,32 +15,14 @@ const LoginScreen: React.FC = () => {
   const [showConfig, setShowConfig] = useState(false);
   const [config, setConfig] = useState<FirebaseConfig>({ apiKey: '', authDomain: '', projectId: '' });
   const [configStatus, setConfigStatus] = useState('');
-  const [isUsingFirebase, setIsUsingFirebase] = useState(false);
+  
+  // Determine if running in demo mode
+  const isDemoMode = localStorage.getItem('useDemoData') === 'true';
 
-// --- useEffect (Code အမှန်) ---
-
-  useEffect(() => {
-    const useDemo = localStorage.getItem('useDemoData') === 'true';
-
-    if (useDemo) {
-        setIsUsingFirebase(false);
-        return;
-    }
-
-    const loadedConfig = loadFirebaseConfig();
-    const initialConfig = loadedConfig || defaultConfig;
-
-    if (initialConfig) {
-      setConfig(initialConfig);
-      if (initializeFirebase(initialConfig)) {
-      // Firebase (db) ရတာနဲ့ Auth ကိုပါ တခါတည်း စတင်ပါ
-      initializeAuth(initialConfig);
-      setIsUsingFirebase(true);
-    }
-    }
-  }, []);
-
-// --- END of useEffect ---
+  useEffect(() => {
+    const loadedConfig = loadFirebaseConfig();
+    setConfig(loadedConfig || defaultConfig);
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,17 +46,11 @@ const LoginScreen: React.FC = () => {
   };
 
   const handleSaveConfig = () => {
-    if (config.apiKey && config.authDomain && config.projectId) {
-      if (initializeFirebase(config)) {
-        // Also initialize Auth so login works immediately
-        initializeAuth(config); // require ကို ဖျက်ပြီး တိုက်ရိုက်ခေါ်ပါ
-        saveFirebaseConfig(config);
-        localStorage.removeItem('useDemoData');
-        // Reload to ensure the new Firebase connection is used cleanly
-        window.location.reload();
-      } else {
-        setConfigStatus('Failed to connect with these details. Check console for errors.');
-      }
+    if (config.apiKey && config.authDomain && config.projectId) {
+      saveFirebaseConfig(config);
+      localStorage.removeItem('useDemoData');
+      // Reload to ensure the new Firebase connection is used cleanly
+      window.location.reload();
     } else {
       setConfigStatus('All configuration fields are required.');
     }
@@ -157,35 +133,11 @@ const LoginScreen: React.FC = () => {
               <a href="/signup" className="text-sm text-blue-600 dark:text-blue-400 hover:underline">Don't have an account? Sign Up</a>
             </div>
             
-            {!isUsingFirebase && (
-                <div className="text-center text-xs text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700 pt-4">
-                <p className="font-semibold mb-2">{t('demoAccountsHint')}</p>
-                <div className="space-y-2">
-                    {demoAccounts.map((account, idx) => (
-                    <div key={idx}>
-                      <button 
-                        type="button"
-                        onClick={() => { setEmail(account.email); setPassword(account.password); }}
-                        className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                      >
-                        {account.email} / <code>{account.password}</code>
-                      </button>
-                    </div>
-                    ))}
-                </div>
-                </div>
-            )}
-          </>
-        )}
-
         {/* --- Configuration UI --- */}
         <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
             <div className="text-center">
-                {isUsingFirebase && !showConfig && (
-                    <p className="text-xs text-green-600 dark:text-green-400 mb-2">Connected to your Firebase project.</p>
-                )}
                 <button onClick={() => setShowConfig(!showConfig)} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
-                    {showConfig ? t('cancel') : isUsingFirebase ? t('editConfig') : t('connectToFirebase')}
+                    {showConfig ? t('cancel') : isDemoMode ? t('connectToFirebase') : t('editConfig')}
                 </button>
             </div>
             {showConfig && (
