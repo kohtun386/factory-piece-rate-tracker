@@ -1,24 +1,23 @@
+// --- firestore.rules (FINAL v3 - THE COMPLETE FIX) ---
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
     
     // ========================================
-    // HELPER FUNCTIONS
+    // HELPER FUNCTIONS (Your original functions)
     // ========================================
     
-    // Check if user is authenticated
     function isAuth() {
       return request.auth != null;
     }
     
-    // Check if user is the owner of a client
     function isClientOwner(clientId) {
       return isAuth() && 
              get(/databases/$(database)/documents/clients/$(clientId)).data.ownerUid == request.auth.uid;
     }
 
-    // Check if user is a member (Owner OR Supervisor)
     function isClientMember(clientId) {
       let data = getClientData(clientId);
       return isAuth() && 
@@ -26,82 +25,80 @@ service cloud.firestore {
               request.auth.uid in data.supervisorUids);
     }
     
-    // Check if user is the owner of a worker's client
     function isWorkerOwner(clientId) {
       return isAuth() && 
              get(/databases/$(database)/documents/clients/$(clientId)).data.ownerUid == request.auth.uid;
     }
     
-    // Get client data document
     function getClientData(clientId) {
       return get(/databases/$(database)/documents/clients/$(clientId)).data;
     }
     
-    // Check if subscription is active
     function isSubActive(clientId) {
       let status = getClientData(clientId).subscriptionStatus;
       return status == 'active';
     }
     
-    // Check if trial is active (trial status AND not expired)
     function isTrialActive(clientId) {
       let data = getClientData(clientId);
       return data.subscriptionStatus == 'trial' && request.time < data.trialEndsAt;
     }
     
-    // Check if subscription is valid (active OR trial still active)
     function isSubscriptionValid(clientId) {
       return isSubActive(clientId) || isTrialActive(clientId);
     }
     
     // ========================================
-    // CLIENTS COLLECTION
+    // CLIENTS COLLECTION (FIXED)
     // ========================================
-    // Users can only read/write their own client document
-    // Document ID = clientId, stores ownerUid, clientName, subscriptionStatus, etc.
-    
     match /clients/{clientId} {
-      // Read: Owner or supervisors (client members) can read their client data
+      
+      // --- 🚨 NEW FIX (THE LOGIN FIX) ---
+      // Allow authenticated users to LIST (query/search) the collection.
+      // This is required for AuthContext.tsx to find the user's client.
+      allow list: if isAuth();
+
+      // Read: Owner or supervisors (client members) can read their OWN client data
       allow read: if isClientMember(clientId);
       
-      // Write (Create/Update): 
-      // - Create: Only authenticated users can create (ownerUid must match)
-      // - Update: Only owner can update their data
+      // Create: Only authenticated users can create (ownerUid must match)
       allow create: if isAuth() && 
-                       request.resource.data.ownerUid == request.auth.uid;
+                      request.resource.data.ownerUid == request.auth.uid;
       
+      // Update: Only owner can update their data
       allow update: if isClientOwner(clientId) && 
-                       (request.resource.data.ownerUid == resource.data.ownerUid);  // Owner UID cannot change
+                      (request.resource.data.ownerUid == resource.data.ownerUid);
       
-      // Delete: Not allowed (prevent accidental deletion)
       allow delete: if false;
       
-      // ========================================
-      // SUBCOLLECTIONS (Workers, ProductionEntries, etc.)
-      // ========================================
-      // All subcollections can only be accessed by the client owner
-      
+      // Subcollections: Only valid members can access
       match /{subcollection=**} {
         allow read, write: if isClientMember(clientId) && isSubscriptionValid(clientId);
       }
     }
     
     // ========================================
-    // AUDIT LOG COLLECTION (Shared across clients)
+    // AUDIT LOG COLLECTION (Your original rules)
     // ========================================
-    // Users can only read audit logs for their own client
-    // Audit entries should be written from backend (Cloud Functions)
-    
     match /auditLog/{auditId} {
       allow read: if isAuth() && 
-                     isClientMember(resource.data.clientId) &&
-                     isSubscriptionValid(resource.data.clientId);
+                    isClientMember(resource.data.clientId) &&
+                    isSubscriptionValid(resource.data.clientId);
       
-      // Backend only (via Cloud Functions with admin SDK)
-      allow write: if false;
+      allow write: if false; // Backend only
+    }
+
+    // ========================================
+    // MAIL COLLECTION (Our fix from earlier)
+    // ========================================
+    match /mail/{docId} {
+      allow create: if isAuth();
+      allow read, update, delete: if false;
     }
     
-    // Deny all other access
+    // ========================================
+    // DENY ALL OTHER ACCESS (Your original rule)
+    // ========================================
     match /{document=**} {
       allow read, write: if false;
     }

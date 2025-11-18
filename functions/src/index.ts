@@ -1,57 +1,119 @@
-import { onCall, HttpsError, CallableRequest } from "firebase-functions/v2/https";
-import { getFirestore, FieldValue } from "firebase-admin/firestore";
-import { initializeApp } from "firebase-admin/app";
-import { getAuth } from "firebase-admin/auth";
+// --- functions/src/index.ts (Final Fixed Version for ALL Flaws) ---
 
-initializeApp();
+import { onCall, HttpsError, CallableRequest } from "firebase-functions/v2/https";
+import { setGlobalOptions } from "firebase-functions/v2";
+import { getFirestore, FieldValue, Firestore } from "firebase-admin/firestore";
+import { initializeApp, App } from "firebase-admin/app";
+import { getAuth, Auth } from "firebase-admin/auth";
+
+// Set the region for all functions in this file
+setGlobalOptions({ region: "asia-east1" });
+
+// 2. Declare variables but DO NOT initialize them in the global scope.
+let app: App;
+let db: Firestore;
+let auth: Auth;
+
+// 3. Create a lazy initialization function
+function initializeAdminSDK() {
+    // Only initialize if the app hasn't been initialized yet
+    if (!app) {
+        app = initializeApp();
+        db = getFirestore(app); 
+        auth = getAuth(app);
+    }
+}
 
 export const inviteSupervisor = onCall(async (request: CallableRequest) => {
-  // Get auth from request.auth
-  if (!request.auth) {
-    throw new HttpsError("unauthenticated", "The function must be called while authenticated.");
-  }
-  const ownerUid = request.auth.uid;
+  
+    // --- Safely get email *before* the try block (Retained from v5) ---
+    const supervisorEmail = request.data?.supervisorEmail;
 
-  // Get data from request.data
-  const supervisorEmail = request.data.supervisorEmail;
+    try {
+        // 🚨 FINAL FIX: Initialize the Admin SDK INSIDE the try block to catch all init errors.
+        initializeAdminSDK(); 
 
-  if (!supervisorEmail) {
-    throw new HttpsError("invalid-argument", "The function must be called with a 'supervisorEmail' argument.");
-  }
+        if (!request.auth) {
+          throw new HttpsError("unauthenticated", "The function must be called while authenticated.");
+        }
+        const ownerUid = request.auth.uid;
 
-  const db = getFirestore();
-  const auth = getAuth();
+        if (!supervisorEmail) {
+          throw new HttpsError("invalid-argument", "The function must be called with a 'supervisorEmail' argument.");
+        }
 
-  try {
-    // Verify Owner Status
-    const clientsRef = db.collection("clients");
-    const querySnapshot = await clientsRef.where("ownerUid", "==", ownerUid).get();
+        // 1. Verify Owner Status
+        const clientsRef = db.collection("clients"); 
+        const querySnapshot = await clientsRef.where("ownerUid", "==", ownerUid).get();
+        // ... (rest of the try block logic)
 
-    if (querySnapshot.empty) {
-      throw new HttpsError("permission-denied", "Only owners can invite supervisors.");
+        if (querySnapshot.empty) {
+          throw new HttpsError("permission-denied", "Only owners can invite supervisors.");
+        }
+        const clientId = querySnapshot.docs[0].id;
+        const clientData = querySnapshot.docs[0].data(); 
+ 
+        // 2. Create Auth User
+        const userRecord = await auth.createUser({
+          email: supervisorEmail,
+          emailVerified: false 
+        });
+        const newSupervisorUid = userRecord.uid;
+
+        // 3. Generate the "Set Password" link
+        const actionLink = await auth.generatePasswordResetLink(supervisorEmail);
+
+        // 4. Create an email document in the 'mail' collection
+        await db.collection("mail").add({
+          to: [supervisorEmail],
+          message: {
+            subject: `You've been invited to ${clientData.factoryName}`, 
+            html: `
+              <p>Hello,</p>
+              <p>You have been invited to join the '${clientData.factoryName}' team on Digital Piece-Rate Tracker.</p>
+              <p>Please click the link below to set your password and activate your account:</p>
+              <p><a href="${actionLink}">Set Your Password</a></p>
+              <p>Thanks,</p>
+              <p>The Digital Piece-Rate Tracker Team</p>
+            `,
+          },
+        });
+
+        // 5. Update Firestore
+        await db.collection("clients").doc(clientId).update({
+          supervisorUids: FieldValue.arrayUnion(newSupervisorUid), 
+        });
+
+        return { status: "success", message: "Supervisor invited successfully." };
+    
+    } catch (error: any) {
+        
+        // --- FINAL & SYNTAX-CORRECT BULLETPROOF CATCH BLOCK ---
+        // This is the safety net that is now guaranteed to catch the initialization error.
+        
+        // 1. Sentinel log to confirm the catch block was REACHED.
+        console.log("CATCH_BLOCK_ENTERED: True"); 
+
+        // 2. Log primitive components of the error (safest method to ensure log output).
+        if (error && typeof error === 'object') {
+            console.error("FATAL_ERROR_INVITE_SUPERVISOR_CODE:", error.code || 'NO_CODE_PROPERTY');
+            console.error("FATAL_ERROR_INVITE_SUPERVISOR_MESSAGE:", error.message || String(error));
+        } else {
+            console.error("FATAL_ERROR_INVITE_SUPERVISOR_MESSAGE:", String(error));
+        }
+        
+        // 3. Handle specific Auth error safely.
+        if (error && typeof error === 'object' && error.code === 'auth/email-already-exists') {
+          console.warn("Attempted to invite existing user. Throwing ALREADY_EXISTS HttpsError.");
+          throw new HttpsError("already-exists", "The user with this email already exists. Please use the 'Add Existing Supervisor' feature or contact support.");
+        }
+    
+        // 4. Re-throw HttpsError instances
+        if (error instanceof HttpsError) {
+          throw error; 
+        }
+
+        // 5. Final fallback for all other unhandled errors.
+        throw new HttpsError("internal", "An unhandled internal error occurred. Please check function logs for 'FATAL_ERROR_INVITE_SUPERVISOR'.");
     }
-    const clientId = querySnapshot.docs[0].id;
-
-    // Create Auth User
-    const userRecord = await auth.createUser({ email: supervisorEmail });
-    const newSupervisorUid = userRecord.uid;
-
-    // Update Firestore
-    await db.collection("clients").doc(clientId).update({
-      supervisorUids: FieldValue.arrayUnion(newSupervisorUid),
-    });
-
-    return { status: "success", message: "Supervisor invited successfully." };
-
-  } catch (error: any) {
-    // Handle known errors
-    if (error.code === 'auth/email-already-exists') {
-      throw new HttpsError("already-exists", "This email is already in use.");
-    }
-    // Re-throw HttpsError instances
-    if (error instanceof HttpsError) {
-      throw error;
-    }
-    throw new HttpsError("internal", error.message);
-  }
 });

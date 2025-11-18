@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useLanguage } from '../contexts/LanguageContext';
 
 const SignUpScreen: React.FC = () => {
-  const { registerOwnerWithEmail } = useAuth();
-  const { t } = useLanguage();
+  const { signUp } = useAuth();
 
   const [factoryName, setFactoryName] = useState('');
   const [email, setEmail] = useState('');
@@ -22,7 +20,7 @@ const SignUpScreen: React.FC = () => {
 
     setLoading(true);
     try {
-      await registerOwnerWithEmail(factoryName, email, password);
+      await signUp(factoryName, email, password);
       // onAuthStateChanged in AuthContext will update state and navigate
     } catch (err: any) {
       setError(err?.message || String(err) || 'Sign up failed');

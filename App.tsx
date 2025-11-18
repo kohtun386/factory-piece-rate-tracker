@@ -68,7 +68,7 @@ const AppContent: React.FC = () => {
                 setIsLoadingData(true);
                 try {
                     const auditLogData = await getCollection<AuditEntry>('auditLog');
-                    setAuditLog(auditLogData.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+                    setAuditLog(auditLogData.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a, b).getTime()));
                 } catch (error) {
                     console.error("Error fetching initial data:", error);
                 } finally {

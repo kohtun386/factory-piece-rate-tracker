@@ -1,3 +1,5 @@
+import type { FieldValue, Timestamp } from 'firebase/firestore';
+
 // FIX: Removed self-import of 'FirebaseTimestamp' to resolve the name conflict error. The interface is defined within this file.
 export type Shift = 'Day' | 'Night';
 export type UserRole = 'owner' | 'supervisor';
@@ -69,11 +71,17 @@ export interface FirebaseTimestamp {
 }
 
 export interface ClientData {
-  clientName: string;
+  factoryName: string;
+  ownerUid: string;
+  ownerEmail: string;
+  supervisorUids: string[];
   subscriptionStatus: SubscriptionStatus;
+  trialStartedAt: Timestamp | FieldValue;
+  trialEndsAt: Timestamp | Date;
+  // for backward compatibility
+  clientName?: string; 
   trialEndDate?: FirebaseTimestamp;
-  ownerPassword?: string; // Optional field for backward compatibility
-  ownerEmail?: string; // Email of the account owner (used for Firebase Auth)
+  ownerPassword?: string; 
 }
 
 export interface FirebaseConfig {

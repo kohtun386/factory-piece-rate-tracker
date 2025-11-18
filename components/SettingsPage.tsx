@@ -14,14 +14,14 @@ const SettingsPage: React.FC = () => {
     }
 
     setSuccessMessage('');
-    try {
-      await inviteSupervisor(supervisorEmail);
+    const result = await inviteSupervisor(supervisorEmail);
+
+    if (result.success) {
       setSuccessMessage(`Invitation sent successfully to ${supervisorEmail}!`);
       setSupervisorEmail(''); // Clear input on success
-    } catch (error) {
-      // Error is already handled and stored in `inviteError` by the context
-      console.error(error);
     }
+    // If the invitation fails, the `inviteError` state is already set in the AuthContext
+    // and will be displayed by the component.
   };
 
   // Clear messages when the user starts typing again
