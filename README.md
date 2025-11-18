@@ -2,7 +2,7 @@
 
 SaaS ERP for Textile Weaving Mills to automate piece-rate payroll. Built with React, TypeScript, and the Firebase serverless backend.
 
-**Live Demo:** [https://factory-piece-rate-tracker-m6fwe9h28-ko-htuns-projects.vercel.app](https://factory-piece-rate-tracker-m6fwe9h28-ko-htuns-projects.vercel.app)
+**Live Demo:** [https://factory-piece-rate-tracker-m6twe9h28-ko-htuns-projects.vercel.app](https://factory-piece-rate-tracker-m6twe9h28-ko-htuns-projects.vercel.app)
 
 ---
 
