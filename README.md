@@ -51,3 +51,5 @@ The "Invite Supervisor" feature was trapped in a "Silent Crash Loop" (0 logs, `E
 4.  **The "Region Mismatch" Flaw:** Solved the `us-central1` CORS error by updating the React Frontend (`AuthContext.tsx`) to explicitly call the function in the correct `asia-east1` region using `getFunctions(app, "asia-east1")`.
 
 This project is a testament to debugging and architecting a real-world, scalable, and resilient cloud application.
+## Version 1.0 (Stable)
+This version includes all fixes for the "Fatal Flaw Loop" (Deployment, Path, Timeout, and Region errors) and is considered the stable v1.0 release.
